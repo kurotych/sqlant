@@ -1,39 +1,47 @@
+use std::cell::{RefCell, RefMut};
+use std::collections::HashSet;
+use std::rc::{Rc, Weak};
 use std::vec::Vec;
-struct ForeignKey<'a> {
-    source_table: &'a Table<'a>,
-    destination_table: &'a Table<'a>,
-    source_columns: Vec<String>, // TODO?
-    destionation_columns: Vec<String>,
-}
 
-enum ColumnConstraints {
-    NotNull,
-    Unique,
-    PrimaryKey,
-    ForeignKey,
-    Check(String), // Ex: CONSTRAINT CHK_Person CHECK (Age>=18 AND City='Sandnes')
-    Default(String),
-    Index,
-}
-
-struct TableColumn {
-    name: String,
+#[derive(Debug, Clone)]
+pub struct TableColumn {
+    pub name: String,
+    pub col_num: i32, // delete
     // Different SQL databases have different types.
     // Let's keep it as string not ENUM
-    ctype: String,
-    constraints: Vec<ColumnConstraints>,
+    pub datatype: String,
+    pub constraints: HashSet<ColumnConstraints>, // TODO hashset!
 }
 
-struct Table<'a> {
-    name: String,
-    columns: Vec<TableColumn>,
-    fks: Vec<ForeignKey<'a>>,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ColumnConstraints {
+    NotNull,         // +
+    PrimaryKey,      // +
+    ForeignKey,      // + target table name
+    Unique,          // +
+    Check(String),   // Ex: CONSTRAINT CHK_Person CHECK (Age>=18 AND City='Sandnes') // +
+    Default(String), // TODO
+    Index,           // Mark NOT Unique indexes
+}
+
+#[derive(Debug)]
+pub struct ForeignKey {
+    // pub source_table: &'a Table<'a>,
+    pub source_columns: Vec<Rc<TableColumn>>,
+    // pub destination_table: &'a Table<'a>,
+    pub destionation_columns: Vec<Rc<TableColumn>>,
+}
+
+#[derive(Debug)]
+pub struct Table {
+    pub name: String,
+    pub columns: Vec<Rc<TableColumn>>,
+    pub fks: Vec<ForeignKey>,
 }
 
 // ERD - entity relationship diagram
-
-pub struct SqlERData<'a> {
-    tbls: Vec<Table<'a>>,
+pub struct SqlERData {
+    pub tbls: Vec<Table>,
     // Maybe some metadata will appear in future?
 }
 

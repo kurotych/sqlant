@@ -1,54 +1,229 @@
-use super::sql_entities::{SqlERData, SqlERDataLoader};
-use postgres::types::FromSql;
-use postgres::{Client, Error, NoTls};
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::rc::{Rc, Weak};
+
+use crate::sql_entities::ColumnConstraints;
+
+// TODO rename to loader
+use super::sql_entities::{ForeignKey, SqlERData, SqlERDataLoader, Table, TableColumn};
+use postgres::types::{FromSql, Kind, ToSql};
+use postgres::{Client, Column, Error, NoTls};
 
 static GET_TABLES_LIST_QUERY: &'static str = "\
         SELECT table_name, table_name::regclass::oid as table_oid \
         FROM information_schema.tables where table_schema = 'public'";
 
+/// https://www.postgresql.org/docs/current/catalog-pg-attribute.html
+static GET_COLUMNS_BASIC_INFO_QUERY: &'static str = r#"
+SELECT attname                  AS col_name
+     , attnum                   AS col_num
+     , atttypid::regtype::name  AS datatype
+     , attnotnull               AS not_null
+     , attrelid
+     , relname                  AS table_name
+FROM   pg_attribute
+INNER JOIN pg_class
+   ON pg_class.oid = pg_attribute.attrelid
+WHERE relname =  any($1)
+AND    NOT attisdropped
+AND    attnum  > 0
+ORDER  BY relname;
+"#;
+
 // pg_get_constraintdef(oid) -- just for debugging purposes
+/// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
 static GET_FOREIGN_KEYS_QUERY: &'static str = r#"
-SELECT conrelid::regclass as "source_table_name",
-       confrelid::regclass as "target_table_name",
-       conname AS foreign_key_name,
+SELECT conrelid::regclass::name as "source_table_name",
+       confrelid::regclass::name as "target_table_name",
+       conname as foreign_key_name,
        oid as "foreign_key_oid",
        conkey as "source_column_nums",
        confkey as "target_columns_nums",
-       conrelid, -- "source_table_oid(conrelid)",
+       conrelid as "source_table_oid(conrelid)",
        confrelid as "target_table_oid(confrelid)",
        pg_get_constraintdef(oid) -- just for debugging purposes
-INTO TEMP TABLE temp_table
 FROM   pg_constraint
 WHERE  contype = 'f'
 AND    connamespace = 'public'::regnamespace
 ORDER  BY source_table_name;
 "#;
 
-pub struct PostgreSqlERParser {
-    client: Client,
+static GET_PKS_QUERY: &'static str = r#"
+SELECT conrelid::regclass::name as "table_name",
+       conname as primary_key_name,
+       conkey as "pk_column_nums",
+       pg_get_constraintdef(oid) -- just for debugging purposes
+FROM   pg_constraint
+WHERE  contype = 'p'
+AND    connamespace = 'public'::regnamespace
+ORDER  BY table_name;
+"#;
+
+/// https://www.postgresql.org/docs/current/view-pg-indexes.html
+static GET_INDEXES_QUERY: &'static str = r#"
+SELECT
+    tablename,
+    indexname,
+    indexdef
+FROM
+    pg_indexes
+WHERE
+    schemaname = 'public'
+ORDER BY
+    tablename,
+    indexname;
+"#;
+
+/// Inernal type of Foreign Key. With values that loaded from db
+#[derive(Debug)]
+struct FkInternal {
+    source_table_name: String,
+    source_columns_num: Vec<i16>,
+    target_table_name: String,
+    target_columns_num: Vec<i16>,
 }
 
-impl PostgreSqlERParser {
+pub struct PostgreSqlERParser {
+    client: Client,
+    // TODO make &str?
+    pks: HashMap<String, Vec<i16>>,   // table_name, col_nums
+    fks: HashMap<String, FkInternal>, // key - source_table_name
+}
+
+impl<'a> PostgreSqlERParser {
     pub fn new(connection_string: &str) -> PostgreSqlERParser {
-        let mut client = Client::connect(connection_string, NoTls).unwrap();
-        PostgreSqlERParser { client }
+        // TODO move to load_erd_data ?
+        let client = Client::connect(connection_string, NoTls).unwrap();
+        PostgreSqlERParser {
+            client,
+            pks: HashMap::new(),
+            fks: HashMap::new(),
+        }
+    }
+
+    fn load_columns(&mut self, table_names: Vec<String>) -> Vec<Table> {
+        let mut columns: HashMap<String, Vec<Rc<TableColumn>>> = HashMap::new();
+        for tbl_name in &table_names {
+            columns.insert(tbl_name.to_string(), vec![]);
+        }
+
+        let rows = self
+            .client
+            .query(GET_COLUMNS_BASIC_INFO_QUERY, &[&table_names])
+            .unwrap();
+        for row in rows {
+            // I don't know how to get rid this
+            let col_num: i16 = row.get("col_num");
+            let col_name: &str = row.get("col_name");
+            let not_null: bool = row.get("not_null");
+            let tbl_name: &str = row.get("table_name");
+            let col_type: &str = row.get("datatype");
+
+            let mut constraints = self.get_constraints(tbl_name, col_num);
+            if not_null {
+                constraints.insert(ColumnConstraints::NotNull);
+            }
+
+            columns
+                .get_mut(tbl_name)
+                .unwrap()
+                .push(Rc::new(TableColumn {
+                    name: col_name.to_string(),
+                    col_num: col_num as i32,
+                    datatype: col_type.to_string(),
+                    constraints,
+                }));
+        }
+        // Transform HashMap<String, Vec<Rc<TableColumn>>> into Vec<Table>
+        columns
+            .iter()
+            .map(|(k, v)| Table {
+                name: k.to_string(),
+                columns: v.to_vec(),
+                fks: vec![],
+            })
+            .collect()
+    }
+
+    fn is_fk(&mut self, table_name: &str, table_column: i16) -> bool {
+        match self.fks.get(table_name) {
+            None => false,
+            Some(fks) => fks.source_columns_num.contains(&table_column),
+        }
+    }
+
+    fn is_pk(&mut self, table_name: &str, table_column: i16) -> bool {
+        match self.pks.get(table_name) {
+            None => false,
+            Some(cols) => cols.contains(&table_column),
+        }
+    }
+
+    fn get_constraints(
+        &mut self,
+        table_name: &str,
+        table_column: i16,
+    ) -> HashSet<ColumnConstraints> {
+        let mut res = HashSet::new();
+        if self.is_pk(table_name, table_column) {
+            // The PRIMARY KEY of a table is a combination of NOT NULL and UNIQUE constraint.
+            res.insert(ColumnConstraints::PrimaryKey);
+            res.insert(ColumnConstraints::NotNull);
+            res.insert(ColumnConstraints::Unique);
+        } // todo else if NotNull and if Unique
+
+        if self.is_fk(table_name, table_column) {
+            res.insert(ColumnConstraints::ForeignKey);
+        }
+        // TODO other constraints
+        res
+    }
+
+    fn load_pks(&mut self) {
+        for row in self.client.query(GET_PKS_QUERY, &[]).unwrap() {
+            self.pks
+                .insert(row.get("table_name"), row.get("pk_column_nums"));
+        }
+    }
+
+    fn load_fks(&mut self) {
+        let rows = self.client.query(GET_FOREIGN_KEYS_QUERY, &[]).unwrap();
+        for row in rows {
+            let source_table_name: String = row.get("source_table_name");
+            let target_table_name: String = row.get("target_table_name");
+            let source_columns_num: Vec<i16> = row.get("source_column_nums");
+            let target_columns_num: Vec<i16> = row.get("target_columns_nums");
+            self.fks.insert(
+                source_table_name.clone(),
+                FkInternal {
+                    source_table_name,
+                    source_columns_num,
+                    target_table_name,
+                    target_columns_num,
+                },
+            );
+        }
     }
 }
 
-// get list of tables and its oid
-// SELECT table_name, table_name::regclass::oid as table_oid FROM information_schema.tables where
-// table_schema = 'public';
+#[derive(Debug)]
+struct TableOid {
+    pub table: RefCell<Table>,
+    pub oid: u32,
+}
 
 impl SqlERDataLoader for PostgreSqlERParser {
     fn load_erd_data(&mut self) -> SqlERData {
+        println!("Loading ERD of PostgreSQL database");
         let res = &self.client.query(GET_TABLES_LIST_QUERY, &[]).unwrap();
-        for row in res {
-            let name: &str = row.get(0);
-            let oid: u32 = row.get(1);
-            println!("name: {}, oid: {}", name, oid);
-        }
+        let table_names: Vec<String> = res.into_iter().map(|row| row.get("table_name")).collect();
 
-        let res = &self.client.query(GET_FOREIGN_KEYS_QUERY, &[]).unwrap();
+        self.load_pks();
+        self.load_fks();
+
+        let tables: Vec<Table> = self.load_columns(table_names);
+        println!("Oid table: {:?}", tables[1]);
 
         unimplemented!()
     }

@@ -5,7 +5,7 @@ use std::result::Result;
 mod psql_er_parser;
 mod sql_entities;
 use psql_er_parser::PostgreSqlERParser;
-use sql_entities::SqlERDataLoader;
+use sql_entities::{SqlERDataLoader, Table};
 
 // get list of tables and its oid
 // SELECT table_name, table_name::regclass::oid as table_oid FROM information_schema.tables where
@@ -60,5 +60,7 @@ fn main() {
     // parseArgs
     // getTablesFromDB
     let mut s = lookup_parser(connection_string);
-    s.load_erd_data();
+    let mut erd = s.load_erd_data();
+
+    // filter tables
 }
