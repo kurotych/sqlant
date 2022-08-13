@@ -6,11 +6,11 @@ use std::vec::Vec;
 #[derive(Debug, Clone)]
 pub struct TableColumn {
     pub name: String,
-    pub col_num: i32, // delete
+    pub col_num: i16, // TODO remove me
     // Different SQL databases have different types.
     // Let's keep it as string not ENUM
     pub datatype: String,
-    pub constraints: HashSet<ColumnConstraints>, // TODO hashset!
+    pub constraints: HashSet<ColumnConstraints>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -26,23 +26,22 @@ pub enum ColumnConstraints {
 
 #[derive(Debug)]
 pub struct ForeignKey {
-    // pub source_table: &'a Table<'a>,
+    pub source_table: Rc<Table>,
     pub source_columns: Vec<Rc<TableColumn>>,
-    // pub destination_table: &'a Table<'a>,
-    pub destionation_columns: Vec<Rc<TableColumn>>,
+    pub target_table: Rc<Table>,
+    pub target_columns: Vec<Rc<TableColumn>>,
 }
 
 #[derive(Debug)]
 pub struct Table {
     pub name: String,
-    pub columns: Vec<Rc<TableColumn>>,
-    pub fks: Vec<ForeignKey>,
+    pub columns: Vec<Rc<TableColumn>>, // Hashset?
 }
 
 // ERD - entity relationship diagram
 pub struct SqlERData {
-    pub tbls: Vec<Table>,
-    // Maybe some metadata will appear in future?
+    pub tables: Vec<Rc<Table>>, // hashset ?
+    pub foreign_keys: Vec<ForeignKey>,
 }
 
 pub trait SqlERDataLoader {

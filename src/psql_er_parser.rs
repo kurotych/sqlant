@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::{hash_set, HashMap};
 use std::rc::{Rc, Weak};
 
 use crate::sql_entities::ColumnConstraints;
@@ -76,7 +76,7 @@ ORDER BY
 "#;
 
 /// Inernal type of Foreign Key. With values that loaded from db
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 struct FkInternal {
     source_table_name: String,
     source_columns_num: Vec<i16>,
@@ -87,8 +87,8 @@ struct FkInternal {
 pub struct PostgreSqlERParser {
     client: Client,
     // TODO make &str?
-    pks: HashMap<String, Vec<i16>>,   // table_name, col_nums
-    fks: HashMap<String, FkInternal>, // key - source_table_name
+    pks: HashMap<String, Vec<i16>>,            // table_name, col_nums
+    fks: HashMap<String, HashSet<FkInternal>>, // key - source_table_name
 }
 
 impl<'a> PostgreSqlERParser {
@@ -102,7 +102,50 @@ impl<'a> PostgreSqlERParser {
         }
     }
 
-    fn load_columns(&mut self, table_names: Vec<String>) -> Vec<Table> {
+    /// Return empty vector if no FKs
+    fn get_fks(&self, tbls: &Vec<Rc<Table>>) -> Vec<ForeignKey> {
+        let mut res = vec![];
+        for tbl in tbls {
+            if let Some(fks) = self.fks.get(&tbl.name) {
+                for fk in fks {
+                    let source_table = Rc::clone(tbl);
+
+                    println!("Source table: {:?}", source_table.name);
+                    let source_columns: Vec<Rc<TableColumn>> = (&source_table.columns)
+                        .into_iter()
+                        .filter(|&col| fk.source_columns_num.contains(&col.col_num))
+                        .map(|tc| Rc::clone(tc))
+                        .collect();
+
+                    println!("Source table columns: {:?}", source_columns);
+
+                    let target_table = Rc::clone(
+                        tbls.into_iter()
+                            .find(|&tbl| tbl.name == fk.target_table_name)
+                            .unwrap(),
+                    );
+
+                    let target_columns: Vec<Rc<TableColumn>> = (&target_table.columns)
+                        .into_iter()
+                        .filter(|&col| fk.target_columns_num.contains(&col.col_num))
+                        .map(|tc| Rc::clone(tc))
+                        .collect();
+                    println!("target table: {:?}", target_table.name);
+                    println!("table columns: {:?}", target_columns);
+
+                    res.push(ForeignKey {
+                        source_table,
+                        source_columns,
+                        target_table,
+                        target_columns,
+                    });
+                }
+            }
+        }
+        res
+    }
+
+    fn load_tables(&mut self, table_names: Vec<String>) -> Vec<Rc<Table>> {
         let mut columns: HashMap<String, Vec<Rc<TableColumn>>> = HashMap::new();
         for tbl_name in &table_names {
             columns.insert(tbl_name.to_string(), vec![]);
@@ -130,7 +173,7 @@ impl<'a> PostgreSqlERParser {
                 .unwrap()
                 .push(Rc::new(TableColumn {
                     name: col_name.to_string(),
-                    col_num: col_num as i32,
+                    col_num,
                     datatype: col_type.to_string(),
                     constraints,
                 }));
@@ -138,10 +181,11 @@ impl<'a> PostgreSqlERParser {
         // Transform HashMap<String, Vec<Rc<TableColumn>>> into Vec<Table>
         columns
             .iter()
-            .map(|(k, v)| Table {
-                name: k.to_string(),
-                columns: v.to_vec(),
-                fks: vec![],
+            .map(|(k, v)| {
+                Rc::new(Table {
+                    name: k.to_string(),
+                    columns: v.to_vec(),
+                })
             })
             .collect()
     }
@@ -149,7 +193,14 @@ impl<'a> PostgreSqlERParser {
     fn is_fk(&mut self, table_name: &str, table_column: i16) -> bool {
         match self.fks.get(table_name) {
             None => false,
-            Some(fks) => fks.source_columns_num.contains(&table_column),
+            Some(fks) => {
+                for f in fks {
+                    if f.source_columns_num.contains(&table_column) {
+                        return true;
+                    }
+                }
+                return false;
+            }
         }
     }
 
@@ -194,37 +245,38 @@ impl<'a> PostgreSqlERParser {
             let target_table_name: String = row.get("target_table_name");
             let source_columns_num: Vec<i16> = row.get("source_column_nums");
             let target_columns_num: Vec<i16> = row.get("target_columns_nums");
-            self.fks.insert(
-                source_table_name.clone(),
-                FkInternal {
-                    source_table_name,
-                    source_columns_num,
-                    target_table_name,
-                    target_columns_num,
-                },
-            );
+
+            let fk = FkInternal {
+                source_table_name: source_table_name.clone(),
+                source_columns_num,
+                target_table_name,
+                target_columns_num,
+            };
+            if let Some(fks) = self.fks.get_mut(&source_table_name) {
+                fks.insert(fk);
+            } else {
+                let mut hs = HashSet::new();
+                hs.insert(fk);
+                self.fks.insert(source_table_name, hs);
+            }
         }
     }
-}
-
-#[derive(Debug)]
-struct TableOid {
-    pub table: RefCell<Table>,
-    pub oid: u32,
 }
 
 impl SqlERDataLoader for PostgreSqlERParser {
     fn load_erd_data(&mut self) -> SqlERData {
         println!("Loading ERD of PostgreSQL database");
-        let res = &self.client.query(GET_TABLES_LIST_QUERY, &[]).unwrap();
-        let table_names: Vec<String> = res.into_iter().map(|row| row.get("table_name")).collect();
-
         self.load_pks();
         self.load_fks();
 
-        let tables: Vec<Table> = self.load_columns(table_names);
-        println!("Oid table: {:?}", tables[1]);
+        let res = &self.client.query(GET_TABLES_LIST_QUERY, &[]).unwrap();
+        let table_names: Vec<String> = res.into_iter().map(|row| row.get("table_name")).collect();
+        let tables: Vec<Rc<Table>> = self.load_tables(table_names);
+        let foreign_keys = self.get_fks(&tables);
 
-        unimplemented!()
+        SqlERData {
+            tables,
+            foreign_keys,
+        }
     }
 }
