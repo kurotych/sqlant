@@ -91,7 +91,7 @@ pub struct PostgreSqlERParser {
     fks: HashMap<String, HashSet<FkInternal>>, // key - source_table_name
 }
 
-impl<'a> PostgreSqlERParser {
+impl PostgreSqlERParser {
     pub fn new(connection_string: &str) -> PostgreSqlERParser {
         // TODO move to load_erd_data ?
         let client = Client::connect(connection_string, NoTls).unwrap();
@@ -133,12 +133,12 @@ impl<'a> PostgreSqlERParser {
                     println!("target table: {:?}", target_table.name);
                     println!("table columns: {:?}", target_columns);
 
-                    res.push(ForeignKey {
+                    res.push(ForeignKey::new(
                         source_table,
                         source_columns,
                         target_table,
                         target_columns,
-                    });
+                    ));
                 }
             }
         }
@@ -181,12 +181,7 @@ impl<'a> PostgreSqlERParser {
         // Transform HashMap<String, Vec<Rc<TableColumn>>> into Vec<Table>
         columns
             .iter()
-            .map(|(k, v)| {
-                Rc::new(Table {
-                    name: k.to_string(),
-                    columns: v.to_vec(),
-                })
-            })
+            .map(|(k, v)| Rc::new(Table::new(k.to_string(), v.to_vec())))
             .collect()
     }
 

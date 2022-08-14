@@ -13,6 +13,12 @@ pub struct TableColumn {
     pub constraints: HashSet<ColumnConstraints>,
 }
 
+impl TableColumn {
+    pub fn is_pk(&self) -> bool {
+        self.constraints.contains(&ColumnConstraints::PrimaryKey)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ColumnConstraints {
     NotNull,         // +
@@ -24,18 +30,21 @@ pub enum ColumnConstraints {
     Index,           // Mark NOT Unique indexes
 }
 
+// Types of relationship https://launchschool.com/books/sql_first_edition/read/multi_tables
 #[derive(Debug)]
 pub struct ForeignKey {
     pub source_table: Rc<Table>,
     pub source_columns: Vec<Rc<TableColumn>>,
     pub target_table: Rc<Table>,
     pub target_columns: Vec<Rc<TableColumn>>,
+    pub is_zero_one_to_one: bool, // 0..1 to 1
 }
 
 #[derive(Debug)]
 pub struct Table {
     pub name: String,
     pub columns: Vec<Rc<TableColumn>>, // Hashset?
+    pub has_composite_pk: bool,
 }
 
 // ERD - entity relationship diagram
@@ -47,4 +56,74 @@ pub struct SqlERData {
 pub trait SqlERDataLoader {
     // Connection string has to be passed in "constructor"
     fn load_erd_data(&mut self) -> SqlERData;
+}
+
+impl Table {
+    pub fn new(name: String, columns: Vec<Rc<TableColumn>>) -> Table {
+        let is_composite_pk = columns.iter().fold(0, |acc, x| {
+            acc + x // there is a bit overhead here, because we can interrupt after acc > 1
+                .as_ref() // but it looks more nice than `for ... in ...` loop
+                .constraints
+                .contains(&ColumnConstraints::PrimaryKey) as u16
+        }) > 1; // if more than 1 pk, it is composite
+
+        Table {
+            name,
+            columns,
+            has_composite_pk: is_composite_pk,
+        }
+    }
+}
+
+impl ForeignKey {
+    fn is_zero_one_to_one(
+        source_table: &Rc<Table>,
+        source_columns: &Vec<Rc<TableColumn>>,
+        target_table: &Rc<Table>,
+        target_columns: &Vec<Rc<TableColumn>>,
+    ) -> bool {
+        if source_columns.iter().find(|col| !col.is_pk()).is_some() {
+            // println!("1");
+            return false;
+        }
+        if target_columns.iter().find(|col| !col.is_pk()).is_some() {
+            // println!("2");
+            return false;
+        }
+
+        // It is not is_zero_one_to_one,
+        // If total count of source_table pks and target_table pks differs
+        if source_table.columns.iter().filter(|c| c.is_pk()).count()
+            != target_table.columns.iter().filter(|c| c.is_pk()).count()
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    pub fn new(
+        source_table: Rc<Table>,
+        source_columns: Vec<Rc<TableColumn>>,
+        target_table: Rc<Table>,
+        target_columns: Vec<Rc<TableColumn>>,
+    ) -> ForeignKey {
+        let is_zero_one_to_one = Self::is_zero_one_to_one(
+            &source_table,
+            &source_columns,
+            &target_table,
+            &target_columns,
+        );
+        println!(
+            "SOURCE TABLE: {:?}, {is_zero_one_to_one}",
+            source_table.name
+        );
+        ForeignKey {
+            source_table,
+            source_columns,
+            target_table,
+            target_columns,
+            is_zero_one_to_one,
+        }
+    }
 }
