@@ -1,6 +1,8 @@
-use sqlant::psql_er_parser::*;
-use sqlant::sql_entities::*;
+use sqlant::{psql_er_parser::*, sql_entities::*};
+use std::collections::HashMap;
 use std::env;
+
+use ColumnConstraints::*;
 
 fn load_erd() -> SqlERData {
     let con_string = env::var("PSQL_CON_STRING").unwrap();
@@ -9,7 +11,57 @@ fn load_erd() -> SqlERData {
 }
 
 #[test]
-fn test_fks() {
+fn columns() {
+    let sql_er_data: SqlERData = load_erd();
+    let tables = HashMap::from([
+        (
+            "order_detail_approval",
+            vec![
+                (
+                    "customer_order_id",
+                    "bigint",
+                    vec![PrimaryKey, ForeignKey, NotNull, Unique],
+                ),
+                (
+                    "order_detail_id",
+                    "bigint",
+                    vec![PrimaryKey, ForeignKey, NotNull, Unique],
+                ),
+                ("operator_id", "bigint", vec![NotNull]),
+                ("approved_at", "timestamp with time zone", vec![NotNull]),
+            ],
+        ),
+        (
+            "product",
+            vec![
+                ("id", "bigint", vec![PrimaryKey, NotNull, Unique]),
+                ("vendor_id", "bigint", vec![ForeignKey, NotNull]),
+                ("name", "text", vec![NotNull]),
+                ("country", "text", vec![NotNull]),
+                ("category", "text", vec![NotNull]),
+            ],
+        ),
+    ]);
+    for (table_name, cols) in tables {
+        let table = sql_er_data
+            .tables
+            .iter()
+            .find(|&t| t.name == table_name)
+            .unwrap();
+        for (exp_col_name, exp_col_type, exp_constraints) in cols {
+            let col = table
+                .columns
+                .iter()
+                .find(|col| col.name == exp_col_name)
+                .unwrap();
+            assert_eq!(col.constraints, exp_constraints.into_iter().collect());
+            assert_eq!(col.datatype, exp_col_type);
+        }
+    }
+}
+
+#[test]
+fn fks() {
     let sql_er_data: SqlERData = load_erd();
     let check_fk = |source_table_name: &str,
                     target_table_name: &str,

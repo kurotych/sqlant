@@ -108,14 +108,11 @@ impl PostgreSqlERParser {
                 for fk in fks {
                     let source_table = Rc::clone(tbl);
 
-                    println!("Source table: {:?}", source_table.name);
                     let source_columns: Vec<Rc<TableColumn>> = (&source_table.columns)
                         .into_iter()
                         .filter(|&col| fk.source_columns_num.contains(&col.col_num))
                         .map(|tc| Rc::clone(tc))
                         .collect();
-
-                    println!("Source table columns: {:?}", source_columns);
 
                     let target_table = Rc::clone(
                         tbls.into_iter()
@@ -128,8 +125,6 @@ impl PostgreSqlERParser {
                         .filter(|&col| fk.target_columns_num.contains(&col.col_num))
                         .map(|tc| Rc::clone(tc))
                         .collect();
-                    println!("target table: {:?}", target_table.name);
-                    println!("table columns: {:?}", target_columns);
 
                     res.push(ForeignKey::new(
                         source_table,
