@@ -1,14 +1,12 @@
-use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::collections::HashSet;
-use std::collections::{hash_set, HashMap};
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 use crate::sql_entities::ColumnConstraints;
 
 // TODO rename to loader
 use super::sql_entities::{ForeignKey, SqlERData, SqlERDataLoader, Table, TableColumn};
-use postgres::types::{FromSql, Kind, ToSql};
-use postgres::{Client, Column, Error, NoTls};
+use postgres::{Client, NoTls};
 
 static GET_TABLES_LIST_QUERY: &'static str = "\
         SELECT table_name, table_name::regclass::oid as table_oid \

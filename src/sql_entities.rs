@@ -83,11 +83,9 @@ impl ForeignKey {
         target_columns: &Vec<Rc<TableColumn>>,
     ) -> bool {
         if source_columns.iter().find(|col| !col.is_pk()).is_some() {
-            // println!("1");
             return false;
         }
         if target_columns.iter().find(|col| !col.is_pk()).is_some() {
-            // println!("2");
             return false;
         }
 
@@ -113,10 +111,6 @@ impl ForeignKey {
             &source_columns,
             &target_table,
             &target_columns,
-        );
-        println!(
-            "SOURCE TABLE: {:?}, {is_zero_one_to_one}",
-            source_table.name
         );
         ForeignKey {
             source_table,
