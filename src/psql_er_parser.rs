@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::sql_entities::ColumnConstraints;
@@ -9,7 +8,7 @@ use super::sql_entities::{ForeignKey, SqlERData, SqlERDataLoader, Table, TableCo
 use postgres::{Client, NoTls};
 
 static GET_TABLES_LIST_QUERY: &'static str = "\
-        SELECT table_name, table_name::regclass::oid as table_oid \
+        SELECT table_name \
         FROM information_schema.tables where table_schema = 'public'";
 
 /// https://www.postgresql.org/docs/current/catalog-pg-attribute.html
@@ -253,7 +252,7 @@ impl PostgreSqlERParser {
 
 impl SqlERDataLoader for PostgreSqlERParser {
     fn load_erd_data(&mut self) -> SqlERData {
-        println!("Loading ERD of PostgreSQL database");
+        // println!("Loading ERD of PostgreSQL database");
         self.load_pks();
         self.load_fks();
 

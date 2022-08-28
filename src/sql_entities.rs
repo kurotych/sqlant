@@ -1,12 +1,12 @@
-use std::cell::{RefCell, RefMut};
+use serde::Serialize;
 use std::collections::HashSet;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::vec::Vec;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TableColumn {
     pub name: String,
-    pub col_num: i16, // TODO remove me
+    pub col_num: i16, // Can be used like id of column
     // Different SQL databases have different types.
     // Let's keep it as string not ENUM
     pub datatype: String,
@@ -17,15 +17,18 @@ impl TableColumn {
     pub fn is_pk(&self) -> bool {
         self.constraints.contains(&ColumnConstraints::PrimaryKey)
     }
+    pub fn is_fk(&self) -> bool {
+        self.constraints.contains(&ColumnConstraints::ForeignKey)
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum ColumnConstraints {
     NotNull,         // +
     PrimaryKey,      // +
     ForeignKey,      // + target table name
     Unique,          // +
-    Check(String),   // Ex: CONSTRAINT CHK_Person CHECK (Age>=18 AND City='Sandnes') // +
+    Check(String),   // TODO Ex: CONSTRAINT CHK_Person CHECK (Age>=18 AND City='Sandnes') // +
     Default(String), // TODO
     Index,           // Mark NOT Unique indexes
 }
@@ -43,19 +46,23 @@ pub struct ForeignKey {
 #[derive(Debug)]
 pub struct Table {
     pub name: String,
-    pub columns: Vec<Rc<TableColumn>>, // Hashset?
+    pub columns: Vec<Rc<TableColumn>>,
     pub has_composite_pk: bool,
 }
 
 // ERD - entity relationship diagram
 pub struct SqlERData {
-    pub tables: Vec<Rc<Table>>, // hashset ?
+    pub tables: Vec<Rc<Table>>,
     pub foreign_keys: Vec<ForeignKey>,
 }
 
 pub trait SqlERDataLoader {
     // Connection string has to be passed in "constructor"
     fn load_erd_data(&mut self) -> SqlERData;
+}
+
+pub trait PlantUmlRenderer {
+    fn render(&self, sql_erd: &SqlERData) -> String;
 }
 
 impl Table {

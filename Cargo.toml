@@ -3,6 +3,12 @@ name = "sqlant"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 postgres = "0.19.3"
+tinytemplate = "1.2"
+serde = { version = "1.0", features = ["derive"] }
+
+[profile.release]
+opt-level = "z"  # Optimize for size.
+strip = true
+lto = true
