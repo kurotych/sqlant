@@ -3,25 +3,24 @@ use std::rc::Rc;
 
 use crate::sql_entities::ColumnConstraints;
 
-// TODO rename to loader
 use super::sql_entities::{ForeignKey, SqlERData, SqlERDataLoader, Table, TableColumn};
 use postgres::{Client, NoTls};
 
-static GET_TABLES_LIST_QUERY: &'static str = "\
-        SELECT table_name \
-        FROM information_schema.tables where table_schema = 'public'";
+static GET_TABLES_LIST_QUERY: &'static str = r#"
+SELECT table_name 
+FROM information_schema.tables where table_schema = 'public'
+"#;
 
 /// https://www.postgresql.org/docs/current/catalog-pg-attribute.html
 static GET_COLUMNS_BASIC_INFO_QUERY: &'static str = r#"
-SELECT attname                  AS col_name
-     , attnum                   AS col_num
-     , format_type(pg_attribute.atttypid, pg_attribute.atttypmod) AS datatype
-     , attnotnull               AS not_null
-     , attrelid
-     , relname                  AS table_name
-FROM   pg_attribute
+SELECT attname                                  AS col_name,
+       attnum                                   AS col_num,
+       format_type(pga.atttypid, pga.atttypmod) AS datatype,
+       attnotnull                               AS not_null,
+       relname                                  AS table_name
+FROM   pg_attribute pga
 INNER JOIN pg_class
-   ON pg_class.oid = pg_attribute.attrelid
+   ON pg_class.oid = pga.attrelid
 WHERE relname =  any($1)
 AND    NOT attisdropped
 AND    attnum  > 0
@@ -31,14 +30,11 @@ ORDER  BY relname;
 // pg_get_constraintdef(oid) -- just for debugging purposes
 /// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
 static GET_FOREIGN_KEYS_QUERY: &'static str = r#"
-SELECT conrelid::regclass::name as "source_table_name",
-       confrelid::regclass::name as "target_table_name",
-       conname as foreign_key_name,
-       oid as "foreign_key_oid",
-       conkey as "source_column_nums",
-       confkey as "target_columns_nums",
-       conrelid as "source_table_oid(conrelid)",
-       confrelid as "target_table_oid(confrelid)",
+SELECT conrelid::regclass::name  AS source_table_name,
+       confrelid::regclass::name AS target_table_name,
+       conname                   AS foreign_key_name,
+       conkey                    AS source_column_nums,
+       confkey                   AS target_columns_nums,
        pg_get_constraintdef(oid) -- just for debugging purposes
 FROM   pg_constraint
 WHERE  contype = 'f'
@@ -47,9 +43,9 @@ ORDER  BY source_table_name;
 "#;
 
 static GET_PKS_QUERY: &'static str = r#"
-SELECT conrelid::regclass::name as "table_name",
-       conname as primary_key_name,
-       conkey as "pk_column_nums",
+SELECT conrelid::regclass::name AS table_name,
+       conname                  AS primary_key_name,
+       conkey                   AS pk_columns_nums,
        pg_get_constraintdef(oid) -- just for debugging purposes
 FROM   pg_constraint
 WHERE  contype = 'p'
@@ -58,19 +54,20 @@ ORDER  BY table_name;
 "#;
 
 /// https://www.postgresql.org/docs/current/view-pg-indexes.html
-static GET_INDEXES_QUERY: &'static str = r#"
-SELECT
-    tablename,
-    indexname,
-    indexdef
-FROM
-    pg_indexes
-WHERE
-    schemaname = 'public'
-ORDER BY
-    tablename,
-    indexname;
-"#;
+// If you'll need to add indexers support
+// static GET_INDEXES_QUERY: &'static str = r#"
+// SELECT
+//     tablename,
+//     indexname,
+//     indexdef
+// FROM
+//     pg_indexes
+// WHERE
+//     schemaname = 'public'
+// ORDER BY
+//     tablename,
+//     indexname;
+// "#;
 
 /// Inernal type of Foreign Key. With values that loaded from db
 #[derive(Debug, Hash, PartialEq, Eq)]
@@ -81,18 +78,16 @@ struct FkInternal {
     target_columns_num: Vec<i16>,
 }
 
-pub struct PostgreSqlERParser {
+pub struct PostgreSqlERDLoader {
     client: Client,
-    // TODO make &str?
     pks: HashMap<String, Vec<i16>>,            // table_name, col_nums
     fks: HashMap<String, HashSet<FkInternal>>, // key - source_table_name
 }
 
-impl PostgreSqlERParser {
-    pub fn new(connection_string: &str) -> PostgreSqlERParser {
-        // TODO move to load_erd_data ?
+impl PostgreSqlERDLoader {
+    pub fn new(connection_string: &str) -> PostgreSqlERDLoader {
         let client = Client::connect(connection_string, NoTls).unwrap();
-        PostgreSqlERParser {
+        PostgreSqlERDLoader {
             client,
             pks: HashMap::new(),
             fks: HashMap::new(),
@@ -221,7 +216,7 @@ impl PostgreSqlERParser {
     fn load_pks(&mut self) {
         for row in self.client.query(GET_PKS_QUERY, &[]).unwrap() {
             self.pks
-                .insert(row.get("table_name"), row.get("pk_column_nums"));
+                .insert(row.get("table_name"), row.get("pk_columns_nums"));
         }
     }
 
@@ -250,9 +245,8 @@ impl PostgreSqlERParser {
     }
 }
 
-impl SqlERDataLoader for PostgreSqlERParser {
+impl SqlERDataLoader for PostgreSqlERDLoader {
     fn load_erd_data(&mut self) -> SqlERData {
-        // println!("Loading ERD of PostgreSQL database");
         self.load_pks();
         self.load_fks();
 

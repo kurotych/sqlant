@@ -1,12 +1,9 @@
-use sqlant::{psql_er_parser::*, sql_entities::*};
-use std::collections::HashMap;
-use std::env;
-
-use ColumnConstraints::*;
+use sqlant::{lookup_parser, sql_entities::ColumnConstraints::*, sql_entities::*};
+use std::{collections::HashMap, env};
 
 fn load_erd() -> SqlERData {
-    let con_string = env::var("PSQL_CON_STRING").unwrap();
-    let mut parser = PostgreSqlERParser::new(&con_string);
+    let con_string = env::var("CON_STRING").unwrap();
+    let mut parser = lookup_parser(&con_string);
     parser.load_erd_data()
 }
 
