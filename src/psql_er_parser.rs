@@ -15,7 +15,7 @@ static GET_TABLES_LIST_QUERY: &'static str = "\
 static GET_COLUMNS_BASIC_INFO_QUERY: &'static str = r#"
 SELECT attname                  AS col_name
      , attnum                   AS col_num
-     , atttypid::regtype::name  AS datatype
+     , format_type(pg_attribute.atttypid, pg_attribute.atttypmod) AS datatype
      , attnotnull               AS not_null
      , attrelid
      , relname                  AS table_name
