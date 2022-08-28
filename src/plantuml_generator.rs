@@ -2,7 +2,7 @@ use super::sql_entities::{PlantUmlRenderer, SqlERData, Table, TableColumn};
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
-pub struct PlantUmlDefaultRenderer<'a> {
+pub struct PlantUmlDefaultGenerator<'a> {
     str_templates: TinyTemplate<'a>,
 }
 
@@ -51,15 +51,15 @@ struct SForeignKey {
     is_zero_one_to_one: bool,
 }
 
-impl<'a> PlantUmlDefaultRenderer<'a> {
-    pub fn new() -> PlantUmlDefaultRenderer<'a> {
+impl<'a> PlantUmlDefaultGenerator<'a> {
+    pub fn new() -> PlantUmlDefaultGenerator<'a> {
         let mut str_templates = TinyTemplate::new();
         str_templates.add_template("puml", PUML_TEMPLATE).unwrap();
         str_templates.add_template("pk", COLUMN_TEMPLATE).unwrap();
         str_templates.add_template("ent", ENTITY_TEMPLATE).unwrap();
         str_templates.add_template("rel", REL_TEMPLATE).unwrap();
         str_templates.set_default_formatter(&format_unescaped);
-        PlantUmlDefaultRenderer { str_templates }
+        PlantUmlDefaultGenerator { str_templates }
     }
 
     fn entity_render(&self, tbl: &Table) -> String {
@@ -100,7 +100,7 @@ impl<'a> PlantUmlDefaultRenderer<'a> {
     }
 }
 
-impl<'a> PlantUmlRenderer for PlantUmlDefaultRenderer<'a> {
+impl<'a> PlantUmlRenderer for PlantUmlDefaultGenerator<'a> {
     fn render(&self, sql_erd: &SqlERData) -> String {
         let entities: Vec<String> = sql_erd
             .tables
