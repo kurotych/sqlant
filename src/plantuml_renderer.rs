@@ -14,7 +14,7 @@ static ENTITY_TEMPLATE: &'static str = "entity \"**{name}**\" \\{\n{pks}---\n{fk
 
 static COLUMN_TEMPLATE: &'static str =
     "{{ if is_pk }}#{{else}}*{{ endif }} <b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" \
-        <b>{{ if is_pk }}<color:goldenrod>[PK] </color>{{ endif }}{{ if is_fk }}<color:701fc6>[FK] </color>{{ endif }} //\n";
+        <b>{{ if is_pk }}<color:goldenrod>(PK) </color>{{ endif }}{{ if is_fk }}<color:701fc6>(FK) </color>{{ endif }} //\n";
 
 static REL_TEMPLATE: &'static str =
     "\"**{source_table_name}**\" {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} \"**{target_table_name}**\"\n";
