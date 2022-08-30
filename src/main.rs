@@ -1,4 +1,4 @@
-use sqlant::{get_renderer, lookup_parser};
+use sqlant::{get_generator, lookup_parser};
 use std::env;
 
 fn main() {
@@ -8,7 +8,7 @@ fn main() {
     assert!(args.len() == 2, "Usage: sqlant <conn>");
     let mut s = lookup_parser(&args[1]);
     let erd = s.load_erd_data();
-    let rndr = get_renderer();
-    let result = rndr.render(&erd);
+    let rndr = get_generator();
+    let result = rndr.generate(&erd);
     println!("{result}")
 }

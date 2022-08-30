@@ -61,8 +61,8 @@ pub trait SqlERDataLoader {
     fn load_erd_data(&mut self) -> SqlERData;
 }
 
-pub trait PlantUmlRenderer {
-    fn render(&self, sql_erd: &SqlERData) -> String;
+pub trait PlantUmlGenerator {
+    fn generate(&self, sql_erd: &SqlERData) -> String;
 }
 
 impl Table {

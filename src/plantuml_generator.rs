@@ -1,4 +1,4 @@
-use super::sql_entities::{PlantUmlRenderer, SqlERData, Table, TableColumn};
+use super::sql_entities::{PlantUmlGenerator, SqlERData, Table, TableColumn};
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
@@ -111,9 +111,8 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
     }
 }
 
-// TODO rename render to gen
-impl<'a> PlantUmlRenderer for PlantUmlDefaultGenerator<'a> {
-    fn render(&self, sql_erd: &SqlERData) -> String {
+impl<'a> PlantUmlGenerator for PlantUmlDefaultGenerator<'a> {
+    fn generate(&self, sql_erd: &SqlERData) -> String {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
