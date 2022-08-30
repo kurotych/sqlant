@@ -4,9 +4,17 @@ jobs:
   build:
     docker:
       - image: cimg/rust:1.63.0
+      - image: cimg/postgres:14.2
+        environment:
+            POSTGRES_USER: sqlant_user
+            POSTGRES_PASSWORD: sqlant_pswd
+            POSTGRES_DB: sqlant_db
     steps:
       - checkout
       - run: cargo build
+      - run: CON_STRING=postgresql://sqlant_user:sqlant_pswd@localhost/sqlant_db cargo test
+  resource_class: small
+
 
 workflows:
   say-hello-workflow:
