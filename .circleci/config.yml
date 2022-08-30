@@ -4,6 +4,8 @@ jobs:
   build:
     docker:
       - image: cimg/rust:1.63.0
+        environment:
+          TEST_DATABASE_URL: postgresql://sqlant_user:sqlant_pswd@localhost/sqlant_db
       - image: cimg/postgres:14.2
         environment:
             POSTGRES_USER: sqlant_user
@@ -13,7 +15,7 @@ jobs:
       - checkout
       - run: sudo apt-get install postgresql-client
       - run: cargo build
-      - run: CON_STRING=postgresql://sqlant_user:sqlant_pswd@localhost/sqlant_db cargo test
+      - run: CON_STRING=$TEST_DATABASE_URL cargo test
   resource_class: small
 
 
