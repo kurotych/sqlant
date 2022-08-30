@@ -10,7 +10,7 @@ static PUML_TEMPLATE: &'static str = "@startuml \
     \n\nhide circle\nskinparam linetype ortho\n\n{{ for ent in entities}}{ent}\n{{ endfor }}\
     {{ for fk in foreign_keys}}{fk}\n{{ endfor }}@enduml\n";
 
-static ENTITY_TEMPLATE: &'static str = "entity \"**{name}**\" \\{\n{pks}---\n{fks}}\n";
+static ENTITY_TEMPLATE: &'static str = "entity \"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
 
 static COLUMN_TEMPLATE: &'static str =
     "{{ if is_pk }}#{{else}}*{{ endif }} <b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" \
@@ -34,8 +34,9 @@ struct SColumn<'a> {
 #[derive(Serialize)]
 struct SEntity {
     name: String,
-    pks: String,
-    fks: String,
+    pks: String,    // Columns that contain PK
+    fks: String,    // Columns that contain FK and doesn't containt PK
+    others: String, // Columns that don't contain both PK and FK
 }
 
 #[derive(Serialize)]
@@ -63,15 +64,24 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
     }
 
     fn entity_render(&self, tbl: &Table) -> String {
-        // if pk_render == true render only pk columns
-        let columns_render = |pk_render: bool| {
+        // if pk_render - render only pk columns
+        // if fk_render - render only pure FK columns (Non PK)
+        // if both are false return non pk and non fk
+        let columns_render = |pk_render: bool, fk_render: bool| {
             tbl.columns
                 .iter()
                 .filter(|col| {
                     if pk_render {
                         return col.is_pk();
                     } // otherwise render non pk columns
-                    !col.is_pk()
+                    if fk_render {
+                        return !col.is_pk() && col.is_fk();
+                    }
+                    if !pk_render && !fk_render {
+                        return !col.is_pk() && !col.is_fk();
+                    }
+                    panic!("Aaa! Something went wrong!");
+                    // !col.is_pk()
                 })
                 .fold(String::new(), |acc, col| {
                     acc + &self
@@ -91,8 +101,9 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
             .render(
                 "ent",
                 &SEntity {
-                    pks: columns_render(true),
-                    fks: columns_render(false),
+                    pks: columns_render(true, false),
+                    fks: columns_render(false, true),
+                    others: columns_render(false, false),
                     name: tbl.name.clone(),
                 },
             )
@@ -100,6 +111,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
     }
 }
 
+// TODO rename render to gen
 impl<'a> PlantUmlRenderer for PlantUmlDefaultGenerator<'a> {
     fn render(&self, sql_erd: &SqlERData) -> String {
         let entities: Vec<String> = sql_erd
