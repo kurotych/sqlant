@@ -9,7 +9,10 @@ I like the [idea of planter](https://github.com/achiku/planter#why-created) and 
 internal confluence documentation with PlantUML plugin for my projects.  
 But I want to make it better
 
-## Installation (TODO) 
+## Installation 
+```bash
+cargo install sqlant
+```
 
 ## Usage
 ```bash
