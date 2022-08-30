@@ -1,7 +1,7 @@
 version: 2.1
 
 jobs:
-  build:
+  run_integration_and_smoke_tests:
     docker:
       - image: cimg/rust:1.63.0
         environment:
@@ -18,12 +18,13 @@ jobs:
           psql \
           -d $TEST_DATABASE_URL \
           -f ./tests/test_db.sql
-      - run: cargo build
       - run: CON_STRING=$TEST_DATABASE_URL cargo test
+      - run: cargo build --release
+      - run: ./target/release/sqlant $TEST_DATABASE_URL
   resource_class: small
 
 
 workflows:
-  say-hello-workflow:
+  default:
     jobs:
-      - build
+      - run_integration_and_smoke_tests
