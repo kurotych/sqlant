@@ -14,6 +14,10 @@ jobs:
     steps:
       - checkout
       - run: sudo apt-get install postgresql-client
+      - run: |
+          psql \
+          -d $TEST_DATABASE_URL \
+          -f ./tests/test_db.sql
       - run: cargo build
       - run: CON_STRING=$TEST_DATABASE_URL cargo test
   resource_class: small
