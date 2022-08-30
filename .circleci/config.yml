@@ -1,0 +1,14 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/rust:1.63.0
+    steps:
+      - checkout
+      - run: cargo build
+
+workflows:
+  say-hello-workflow:
+    jobs:
+      - build
