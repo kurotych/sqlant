@@ -24,13 +24,13 @@ impl TableColumn {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum ColumnConstraints {
-    NotNull,         // +
-    PrimaryKey,      // +
-    ForeignKey,      // + target table name
-    Unique,          // +
-    Check(String),   // TODO Ex: CONSTRAINT CHK_Person CHECK (Age>=18 AND City='Sandnes') // +
+    NotNull,
+    PrimaryKey,
+    ForeignKey,
+    Unique,
+    Check(String), // TODO Ex: CONSTRAINT CHK_Person CHECK (Age>=18 AND City='Sandnes') // +
     Default(String), // TODO
-    Index,           // Mark NOT Unique indexes
+    Index,         // Mark NOT Unique indexes
 }
 
 // Types of relationship https://launchschool.com/books/sql_first_edition/read/multi_tables
@@ -67,9 +67,9 @@ pub trait PlantUmlGenerator {
 
 impl Table {
     pub fn new(name: String, columns: Vec<Rc<TableColumn>>) -> Table {
-        let is_composite_pk = columns.iter().fold(0, |acc, x| {
+        let has_composite_pk = columns.iter().fold(0, |acc, x| {
             acc + x // there is a bit overhead here, because we can interrupt after acc > 1
-                .as_ref() // but it looks more nice than `for ... in ...` loop
+                .as_ref() // but it looks nicely than `for ... in ...` loop
                 .constraints
                 .contains(&ColumnConstraints::PrimaryKey) as u16
         }) > 1; // if more than 1 pk, it is composite
@@ -77,7 +77,7 @@ impl Table {
         Table {
             name,
             columns,
-            has_composite_pk: is_composite_pk,
+            has_composite_pk,
         }
     }
 }
