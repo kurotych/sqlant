@@ -11,6 +11,7 @@ jobs:
             POSTGRES_DB: sqlant_db
     steps:
       - checkout
+      - run: sudo apt-get install postgresql-client
       - run: cargo build
       - run: CON_STRING=postgresql://sqlant_user:sqlant_pswd@localhost/sqlant_db cargo test
   resource_class: small
