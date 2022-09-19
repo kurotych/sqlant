@@ -7,7 +7,7 @@ use super::sql_entities::{ForeignKey, SqlERData, SqlERDataLoader, Table, TableCo
 use postgres::{Client, NoTls};
 
 static GET_TABLES_LIST_QUERY: &'static str = r#"
-SELECT table_name 
+SELECT trim(both '"' from table_name) as table_name
 FROM information_schema.tables where table_schema = 'public'
 "#;
 
@@ -30,8 +30,8 @@ ORDER  BY relname;
 // pg_get_constraintdef(oid) -- just for debugging purposes
 /// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
 static GET_FOREIGN_KEYS_QUERY: &'static str = r#"
-SELECT conrelid::regclass::name  AS source_table_name,
-       confrelid::regclass::name AS target_table_name,
+SELECT trim(both '"' from conrelid::regclass::name)  AS source_table_name,
+       trim(both '"' from confrelid::regclass::name) AS target_table_name,
        conname                   AS foreign_key_name,
        conkey                    AS source_column_nums,
        confkey                   AS target_columns_nums,
@@ -43,7 +43,7 @@ ORDER  BY source_table_name;
 "#;
 
 static GET_PKS_QUERY: &'static str = r#"
-SELECT conrelid::regclass::name AS table_name,
+SELECT trim(both '"' from conrelid::regclass::name) as table_name,
        conname                  AS primary_key_name,
        conkey                   AS pk_columns_nums,
        pg_get_constraintdef(oid) -- just for debugging purposes
