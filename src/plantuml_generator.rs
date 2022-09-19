@@ -35,7 +35,7 @@ struct SColumn<'a> {
 struct SEntity {
     name: String,
     pks: String,    // Columns that contain PK
-    fks: String,    // Columns that contain FK and doesn't containt PK
+    fks: String,    // Columns that contain FK and don't containt PK
     others: String, // Columns that don't contain both PK and FK
 }
 
@@ -81,7 +81,6 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
                         return !col.is_pk() && !col.is_fk();
                     }
                     panic!("Aaa! Something went wrong!");
-                    // !col.is_pk()
                 })
                 .fold(String::new(), |acc, col| {
                     acc + &self
