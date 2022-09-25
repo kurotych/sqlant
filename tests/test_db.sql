@@ -34,7 +34,7 @@ create table vendor_address (
   , state text not null
   , city text not null
   , line1 text not null
-  , line2 text not null
+  , line2 text 
   , FOREIGN KEY(vendor_id) REFERENCES vendor (id)
 );
 

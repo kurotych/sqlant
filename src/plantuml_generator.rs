@@ -1,4 +1,5 @@
-use super::sql_entities::{PlantUmlGenerator, SqlERData, Table, TableColumn};
+use super::sql_entities::{SqlERData, Table, TableColumn};
+use crate::{GeneratorConfigOptions, PlantUmlGenerator};
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
@@ -14,7 +15,8 @@ static ENTITY_TEMPLATE: &'static str = "entity \"**{name}**\" \\{\n{pks}---\n{fk
 
 static COLUMN_TEMPLATE: &'static str =
     "{{ if is_pk }}#{{else}}*{{ endif }} <b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" \
-        <b>{{ if is_pk }}<color:goldenrod>(PK) </color>{{ endif }}{{ if is_fk }}<color:701fc6>(FK) </color>{{ endif }} //\n";
+        {{ if is_pk }}<b><color:goldenrod>(PK) </color></b>{{ endif }}{{ if is_fk }}<b><color:701fc6>(FK) </color></b>{{ endif }}\
+        {{ if is_nn }}<b><color:DarkRed>(NN) </color></b>{{ endif }} //\n";
 
 static REL_TEMPLATE: &'static str =
     "\"**{source_table_name}**\" {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} \"**{target_table_name}**\"\n";
@@ -29,6 +31,7 @@ struct SColumn<'a> {
     col: &'a TableColumn,
     is_fk: bool,
     is_pk: bool,
+    is_nn: bool,
 }
 
 #[derive(Serialize)]
@@ -63,7 +66,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
         PlantUmlDefaultGenerator { str_templates }
     }
 
-    fn entity_render(&self, tbl: &Table) -> String {
+    fn entity_render(&self, tbl: &Table, opts: &GeneratorConfigOptions) -> String {
         // if pk_render - render only pk columns
         // if fk_render - render only pure FK columns (Non PK)
         // if both are false return non pk and non fk
@@ -91,6 +94,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
                                 col: col.as_ref(),
                                 is_fk: col.is_fk(),
                                 is_pk: col.is_pk(),
+                                is_nn: opts.not_null && col.is_nn(),
                             },
                         )
                         .unwrap()
@@ -111,11 +115,11 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
 }
 
 impl<'a> PlantUmlGenerator for PlantUmlDefaultGenerator<'a> {
-    fn generate(&self, sql_erd: &SqlERData) -> String {
+    fn generate(&self, sql_erd: &SqlERData, opts: &GeneratorConfigOptions) -> String {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(&tbl))
+            .map(|tbl| self.entity_render(&tbl, opts))
             .collect();
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys
