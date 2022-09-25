@@ -4,7 +4,15 @@ pub mod sql_entities;
 
 use plantuml_generator::PlantUmlDefaultGenerator;
 use psql_erd_loader::PostgreSqlERDLoader;
-use sql_entities::{PlantUmlGenerator, SqlERDataLoader};
+use sql_entities::{SqlERData, SqlERDataLoader};
+
+pub struct GeneratorConfigOptions {
+    pub not_null: bool,
+}
+
+pub trait PlantUmlGenerator {
+    fn generate(&self, sql_erd: &SqlERData, opts: &GeneratorConfigOptions) -> String;
+}
 
 pub fn lookup_parser(connection_string: &str) -> Box<dyn SqlERDataLoader> {
     if connection_string.starts_with("postgresql") {

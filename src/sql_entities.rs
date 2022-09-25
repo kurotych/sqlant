@@ -20,6 +20,9 @@ impl TableColumn {
     pub fn is_fk(&self) -> bool {
         self.constraints.contains(&ColumnConstraints::ForeignKey)
     }
+    pub fn is_nn(&self) -> bool {
+        self.constraints.contains(&ColumnConstraints::NotNull)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -59,10 +62,6 @@ pub struct SqlERData {
 pub trait SqlERDataLoader {
     // Connection string has to be passed in "constructor"
     fn load_erd_data(&mut self) -> SqlERData;
-}
-
-pub trait PlantUmlGenerator {
-    fn generate(&self, sql_erd: &SqlERData) -> String;
 }
 
 impl Table {

@@ -21,6 +21,7 @@ jobs:
       - run: CON_STRING=$TEST_DATABASE_URL cargo test
       - run: cargo build --release
       - run: ./target/release/sqlant $TEST_DATABASE_URL
+      - run: ./target/release/sqlant $TEST_DATABASE_URL --nn
     resource_class: small
 
 
