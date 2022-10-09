@@ -9,18 +9,28 @@ fn print_program_info() {
         OPTIONS:"
     );
     println!("\t-n, --nn {:>42}\n", "Add NOT_NULL(NN) marks");
+    println!("\t-e, --en {:>42}\n", "Draw enum types");
 }
 
 fn parse_arguments(args: &mut Vec<String>) -> GeneratorConfigOptions {
+    let (mut draw_enums, mut not_null) = (false, false);
     while !args.is_empty() {
         let arg = args.pop().unwrap();
         if arg == "-n" || arg == "--nn" {
-            return GeneratorConfigOptions { not_null: true };
+            not_null = true;
+            continue;
+        }
+        if arg == "-e" || arg == "--en" {
+            draw_enums = true;
+            continue;
         }
         eprintln!("Unknown argument {:?}", arg);
         exit(2);
     }
-    GeneratorConfigOptions { not_null: false }
+    GeneratorConfigOptions {
+        not_null,
+        draw_enums,
+    }
 }
 
 fn main() {

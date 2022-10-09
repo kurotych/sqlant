@@ -8,6 +8,21 @@ fn load_erd() -> SqlERData {
 }
 
 #[test]
+fn enums() {
+    let sql_er_data: SqlERData = load_erd();
+    let mut expected_hash_map = HashMap::new();
+    expected_hash_map.insert(
+        "product_category".to_string(),
+        vec![
+            "electronics".to_string(),
+            "jewelry".to_string(),
+            "home".to_string(),
+        ],
+    );
+    assert_eq!(sql_er_data.enums, expected_hash_map);
+}
+
+#[test]
 fn columns() {
     let sql_er_data: SqlERData = load_erd();
     let tables = HashMap::from([
@@ -35,7 +50,7 @@ fn columns() {
                 ("vendor_id", "bigint", vec![ForeignKey, NotNull]),
                 ("name", "text", vec![NotNull]),
                 ("country", "text", vec![NotNull]),
-                ("category", "text", vec![NotNull]),
+                ("category", "product_category", vec![NotNull]),
             ],
         ),
     ]);
