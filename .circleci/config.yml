@@ -22,6 +22,8 @@ jobs:
       - run: cargo build --release
       - run: ./target/release/sqlant $TEST_DATABASE_URL
       - run: ./target/release/sqlant $TEST_DATABASE_URL --nn
+      - run: ./target/release/sqlant $TEST_DATABASE_URL --en
+      - run: ./target/release/sqlant $TEST_DATABASE_URL -n -e
     resource_class: small
 
 

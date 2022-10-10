@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::vec::Vec;
 
@@ -53,10 +53,14 @@ pub struct Table {
     pub has_composite_pk: bool,
 }
 
+// key - enum_name (type) v = enum values
+pub type SqlEnums = HashMap<String, Vec<String>>;
+
 // ERD - entity relationship diagram
 pub struct SqlERData {
     pub tables: Vec<Rc<Table>>,
     pub foreign_keys: Vec<ForeignKey>,
+    pub enums: SqlEnums,
 }
 
 pub trait SqlERDataLoader {

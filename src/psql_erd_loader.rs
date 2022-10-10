@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::sql_entities::ColumnConstraints;
 
-use super::sql_entities::{ForeignKey, SqlERData, SqlERDataLoader, Table, TableColumn};
+use super::sql_entities::{ForeignKey, SqlERData, SqlERDataLoader, SqlEnums, Table, TableColumn};
 use postgres::{Client, NoTls};
 
 static GET_TABLES_LIST_QUERY: &'static str = r#"
@@ -15,12 +15,16 @@ FROM information_schema.tables where table_schema = 'public'
 static GET_COLUMNS_BASIC_INFO_QUERY: &'static str = r#"
 SELECT attname                                  AS col_name,
        attnum                                   AS col_num,
-       format_type(pga.atttypid, pga.atttypmod) AS datatype,
+       pga.atttypid::regtype::name              AS datatype,
        attnotnull                               AS not_null,
-       relname                                  AS table_name
+       relname                                  AS table_name,
+       pg_type.oid                              AS column_type_oid,
+       typtype
 FROM   pg_attribute pga
 INNER JOIN pg_class
    ON pg_class.oid = pga.attrelid
+INNER JOIN pg_type
+   ON pga.atttypid::regtype::oid = pg_type.oid
 WHERE relname =  any($1)
 AND    NOT attisdropped
 AND    attnum  > 0
@@ -51,6 +55,12 @@ FROM   pg_constraint
 WHERE  contype = 'p'
 AND    connamespace = 'public'::regnamespace
 ORDER  BY table_name;
+"#;
+
+static GET_ENUM_VALUES: &'static str = r#"
+SELECT enumlabel FROM pg_enum
+JOIN pg_type ON pg_enum.enumtypid = pg_type.oid
+WHERE pg_type.oid = $1;
 "#;
 
 /// https://www.postgresql.org/docs/current/view-pg-indexes.html
@@ -132,8 +142,10 @@ impl PostgreSqlERDLoader {
         res
     }
 
-    fn load_tables(&mut self, table_names: Vec<String>) -> Vec<Rc<Table>> {
+    fn load_tables(&mut self, table_names: Vec<String>) -> (Vec<Rc<Table>>, SqlEnums) {
         let mut columns: HashMap<String, Vec<Rc<TableColumn>>> = HashMap::new();
+        // If current database has enum types we load it here
+        let mut enums: SqlEnums = HashMap::new();
         for tbl_name in &table_names {
             columns.insert(tbl_name.to_string(), vec![]);
         }
@@ -149,6 +161,23 @@ impl PostgreSqlERDLoader {
             let not_null: bool = row.get("not_null");
             let tbl_name: &str = row.get("table_name");
             let col_type: &str = row.get("datatype");
+
+            let typ_type: i8 = row.get("typtype");
+            let tt: Result<u32, _> = typ_type.try_into();
+            // enum handler
+            if tt.is_ok()
+                && char::from_u32(tt.unwrap()).unwrap() == 'e'
+                && !enums.contains_key(col_type)
+            {
+                let column_type_oid: u32 = row.get("column_type_oid");
+                let enum_values = self
+                    .client
+                    .query(GET_ENUM_VALUES, &[&column_type_oid])
+                    .unwrap();
+
+                let vals: Vec<String> = enum_values.iter().map(|v| v.get("enumlabel")).collect();
+                enums.insert(col_type.to_string(), vals);
+            }
 
             let mut constraints = self.get_constraints(tbl_name, col_num);
             if not_null {
@@ -166,10 +195,13 @@ impl PostgreSqlERDLoader {
                 }));
         }
         // Transform HashMap<String, Vec<Rc<TableColumn>>> into Vec<Table>
-        columns
-            .iter()
-            .map(|(k, v)| Rc::new(Table::new(k.to_string(), v.to_vec())))
-            .collect()
+        (
+            columns
+                .iter()
+                .map(|(k, v)| Rc::new(Table::new(k.to_string(), v.to_vec())))
+                .collect(),
+            enums,
+        )
     }
 
     fn is_fk(&mut self, table_name: &str, table_column: i16) -> bool {
@@ -252,12 +284,13 @@ impl SqlERDataLoader for PostgreSqlERDLoader {
 
         let res = &self.client.query(GET_TABLES_LIST_QUERY, &[]).unwrap();
         let table_names: Vec<String> = res.into_iter().map(|row| row.get("table_name")).collect();
-        let tables: Vec<Rc<Table>> = self.load_tables(table_names);
+        let (tables, enums) = self.load_tables(table_names);
         let foreign_keys = self.get_fks(&tables);
 
         SqlERData {
             tables,
             foreign_keys,
+            enums,
         }
     }
 }

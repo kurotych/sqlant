@@ -8,6 +8,7 @@ use sql_entities::{SqlERData, SqlERDataLoader};
 
 pub struct GeneratorConfigOptions {
     pub not_null: bool,
+    pub draw_enums: bool,
 }
 
 pub trait PlantUmlGenerator {

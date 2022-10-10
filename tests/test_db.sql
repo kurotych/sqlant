@@ -38,12 +38,14 @@ create table vendor_address (
   , FOREIGN KEY(vendor_id) REFERENCES vendor (id)
 );
 
+CREATE TYPE product_category AS ENUM ('electronics', 'jewelry', 'home');
+
 create table product (
   id bigserial primary key
   , vendor_id bigint not null
   , name text not null
   , country text not null
-  , category text not null
+  , category product_category not null
   , FOREIGN KEY(vendor_id) REFERENCES vendor (id)
 );
 
