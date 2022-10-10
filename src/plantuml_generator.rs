@@ -7,9 +7,12 @@ pub struct PlantUmlDefaultGenerator<'a> {
     str_templates: TinyTemplate<'a>,
 }
 
-static PUML_TEMPLATE: &'static str = "@startuml \
-    \n\nhide circle\nskinparam linetype ortho\n\n{{ for ent in entities}}{ent}\n{{ endfor }}\
-    {{ for fk in foreign_keys}}{fk}\n{{ endfor }}@enduml\n";
+static PUML_TEMPLATE: &'static str = "@startuml \n\n\
+    hide circle\n\
+    skinparam linetype ortho\n\n\
+    {{ for ent in entities}}{ent}\n{{ endfor }}\n\
+    {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
+    {{ for e in enums}}{e}\n{{ endfor }}@enduml\n";
 
 static ENTITY_TEMPLATE: &'static str = "entity \"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
 
@@ -20,6 +23,15 @@ static COLUMN_TEMPLATE: &'static str =
 
 static REL_TEMPLATE: &'static str =
     "\"**{source_table_name}**\" {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} \"**{target_table_name}**\"\n";
+
+static ENUM_TEPLATE: &'static str =
+    "object \"<color:BlueViolet>**{name}**</color> (enum)\" as {name} \\{\n{{ for v in values}} {v}\n{{ endfor }}}\n";
+
+#[derive(Serialize)]
+struct SSqlEnum {
+    name: String,
+    values: Vec<String>,
+}
 
 #[derive(Serialize)]
 struct Entities {
@@ -46,6 +58,7 @@ struct SEntity {
 struct SPuml {
     entities: Vec<String>,
     foreign_keys: Vec<String>,
+    enums: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -62,6 +75,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
         str_templates.add_template("pk", COLUMN_TEMPLATE).unwrap();
         str_templates.add_template("ent", ENTITY_TEMPLATE).unwrap();
         str_templates.add_template("rel", REL_TEMPLATE).unwrap();
+        str_templates.add_template("enum", ENUM_TEPLATE).unwrap();
         str_templates.set_default_formatter(&format_unescaped);
         PlantUmlDefaultGenerator { str_templates }
     }
@@ -138,12 +152,33 @@ impl<'a> PlantUmlGenerator for PlantUmlDefaultGenerator<'a> {
             })
             .collect();
 
+        let enums: Vec<String> = if opts.draw_enums {
+            sql_erd
+                .enums
+                .iter()
+                .map(|(name, values)| {
+                    self.str_templates
+                        .render(
+                            "enum",
+                            &SSqlEnum {
+                                name: name.to_string(),
+                                values: values.to_vec(),
+                            },
+                        )
+                        .unwrap()
+                })
+                .collect()
+        } else {
+            vec![]
+        };
+
         self.str_templates
             .render(
                 "puml",
                 &SPuml {
                     entities,
                     foreign_keys,
+                    enums,
                 },
             )
             .unwrap()
