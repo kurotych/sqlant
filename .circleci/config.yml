@@ -13,6 +13,7 @@ jobs:
             POSTGRES_DB: sqlant_db
     steps:
       - checkout
+      - run: cargo fmt --check
       - run: sudo apt-get install postgresql-client
       - run: |
           psql \

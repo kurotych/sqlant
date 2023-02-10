@@ -14,6 +14,7 @@ authors = ["Anatolii Kurotych <akurotych@gmail.com>"]
 postgres = "0.19.3"
 tinytemplate = "1.2"
 serde = { version = "1.0", features = ["derive"] }
+clap = { version = "4.1.4", features = ["derive"] }
 
 [profile.release]
 opt-level = "z"  # Optimize for size.
