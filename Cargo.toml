@@ -11,9 +11,10 @@ description = "Generate PlantUML ER diagram textual description from SQL connect
 authors = ["Anatolii Kurotych <akurotych@gmail.com>"]
 
 [dependencies]
-postgres = "0.19.3"
+postgres = "0.19.4"
 tinytemplate = "1.2"
 serde = { version = "1.0", features = ["derive"] }
+clap = "4.1.4"
 
 [profile.release]
 opt-level = "z"  # Optimize for size.
