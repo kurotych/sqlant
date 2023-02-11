@@ -8,7 +8,7 @@ use postgres::{Client, NoTls};
 
 static GET_TABLES_LIST_QUERY: &'static str = r#"
 SELECT trim(both '"' from table_name) as table_name
-FROM information_schema.tables where table_schema = 'public'
+FROM information_schema.tables where table_schema = $1
 "#;
 
 /// https://www.postgresql.org/docs/current/catalog-pg-attribute.html
@@ -42,7 +42,7 @@ SELECT trim(both '"' from conrelid::regclass::name)  AS source_table_name,
        pg_get_constraintdef(oid) -- just for debugging purposes
 FROM   pg_constraint
 WHERE  contype = 'f'
-AND    connamespace = 'public'::regnamespace
+AND    connamespace = to_regnamespace($1)::oid
 ORDER  BY source_table_name;
 "#;
 
@@ -53,7 +53,7 @@ SELECT trim(both '"' from conrelid::regclass::name) as table_name,
        pg_get_constraintdef(oid) -- just for debugging purposes
 FROM   pg_constraint
 WHERE  contype = 'p'
-AND    connamespace = 'public'::regnamespace
+AND    connamespace = to_regnamespace($1)::oid
 ORDER  BY table_name;
 "#;
 
@@ -90,15 +90,17 @@ struct FkInternal {
 
 pub struct PostgreSqlERDLoader {
     client: Client,
+    schema_name: String,
     pks: HashMap<String, Vec<i16>>,            // table_name, col_nums
     fks: HashMap<String, HashSet<FkInternal>>, // key - source_table_name
 }
 
 impl PostgreSqlERDLoader {
-    pub fn new(connection_string: &str) -> PostgreSqlERDLoader {
+    pub fn new(connection_string: &str, schema_name: String) -> PostgreSqlERDLoader {
         let client = Client::connect(connection_string, NoTls).unwrap();
         PostgreSqlERDLoader {
             client,
+            schema_name,
             pks: HashMap::new(),
             fks: HashMap::new(),
         }
@@ -246,14 +248,21 @@ impl PostgreSqlERDLoader {
     }
 
     fn load_pks(&mut self) {
-        for row in self.client.query(GET_PKS_QUERY, &[]).unwrap() {
+        for row in self
+            .client
+            .query(GET_PKS_QUERY, &[&self.schema_name])
+            .unwrap()
+        {
             self.pks
                 .insert(row.get("table_name"), row.get("pk_columns_nums"));
         }
     }
 
     fn load_fks(&mut self) {
-        let rows = self.client.query(GET_FOREIGN_KEYS_QUERY, &[]).unwrap();
+        let rows = self
+            .client
+            .query(GET_FOREIGN_KEYS_QUERY, &[&self.schema_name])
+            .unwrap();
         for row in rows {
             let source_table_name: String = row.get("source_table_name");
             let target_table_name: String = row.get("target_table_name");
@@ -275,14 +284,39 @@ impl PostgreSqlERDLoader {
             }
         }
     }
+
+    fn check_is_schema_exists(&mut self) {
+        let res = self
+            .client
+            .query(
+                "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)",
+                &[&self.schema_name],
+            )
+            .unwrap();
+        let row = res.first().unwrap();
+        let exists: bool = row.get("exists");
+        if !exists {
+            panic!("Schema doesn't exist");
+        }
+    }
 }
 
 impl SqlERDataLoader for PostgreSqlERDLoader {
     fn load_erd_data(&mut self) -> SqlERData {
+        // I use it to avoid adding schema prefixes in SQL queries
+        self.client
+            .query(&format!("SET search_path TO {}", self.schema_name), &[])
+            .unwrap();
+
+        self.check_is_schema_exists();
+
         self.load_pks();
         self.load_fks();
 
-        let res = &self.client.query(GET_TABLES_LIST_QUERY, &[]).unwrap();
+        let res = &self
+            .client
+            .query(GET_TABLES_LIST_QUERY, &[&self.schema_name])
+            .unwrap();
         let table_names: Vec<String> = res.into_iter().map(|row| row.get("table_name")).collect();
         let (tables, enums) = self.load_tables(table_names);
         let foreign_keys = self.get_fks(&tables);

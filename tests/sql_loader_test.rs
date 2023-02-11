@@ -1,9 +1,12 @@
 use sqlant::{lookup_parser, sql_entities::ColumnConstraints::*, sql_entities::*};
 use std::{collections::HashMap, env};
 
+mod utils;
+use crate::utils::check_fk;
+
 fn load_erd() -> SqlERData {
     let con_string = env::var("CON_STRING").unwrap();
-    let mut parser = lookup_parser(&con_string);
+    let mut parser = lookup_parser(&con_string, "public".to_string());
     parser.load_erd_data()
 }
 
@@ -54,12 +57,14 @@ fn columns() {
             ],
         ),
     ]);
+
     for (table_name, cols) in tables {
         let table = sql_er_data
             .tables
             .iter()
             .find(|&t| t.name == table_name)
             .unwrap();
+        assert_eq!(cols.len(), table.columns.len());
         for (exp_col_name, exp_col_type, exp_constraints) in cols {
             let col = table
                 .columns
@@ -75,30 +80,8 @@ fn columns() {
 #[test]
 fn fks() {
     let sql_er_data: SqlERData = load_erd();
-    let check_fk = |source_table_name: &str,
-                    target_table_name: &str,
-                    expected_source_columns: Vec<&str>,
-                    expected_target_columns: Vec<&str>| {
-        let fk = sql_er_data
-            .foreign_keys
-            .iter()
-            .find(|&fk| {
-                fk.source_table.name == source_table_name
-                    && fk.target_table.name == target_table_name
-            })
-            .unwrap();
-        assert_eq!(fk.target_table.name, target_table_name);
-        assert_eq!(expected_source_columns.len(), fk.source_columns.len());
-        assert_eq!(expected_target_columns.len(), fk.target_columns.len());
-
-        for source_column in &fk.source_columns {
-            assert!(expected_source_columns.contains(&&*source_column.name));
-        }
-        for target_column in &fk.target_columns {
-            assert!(expected_target_columns.contains(&&*target_column.name));
-        }
-    };
     check_fk(
+        &sql_er_data,
         "order_detail_approval",
         "order_detail",
         vec!["order_detail_id", "customer_order_id"],
@@ -106,21 +89,47 @@ fn fks() {
     );
 
     check_fk(
+        &sql_er_data,
         "order_detail",
         "customer_order",
         vec!["customer_order_id"],
         vec!["id"],
     );
-    check_fk("order_detail", "sku", vec!["sku_id"], vec!["id"]);
     check_fk(
+        &sql_er_data,
+        "order_detail",
+        "sku",
+        vec!["sku_id"],
+        vec!["id"],
+    );
+    check_fk(
+        &sql_er_data,
         "customer_order",
         "customer",
         vec!["customer_id"],
         vec!["id"],
     );
-    check_fk("sku", "product", vec!["product_id"], vec!["id"]);
-    check_fk("product", "vendor", vec!["vendor_id"], vec!["id"]);
-    check_fk("vendor_address", "vendor", vec!["vendor_id"], vec!["id"]);
+    check_fk(
+        &sql_er_data,
+        "sku",
+        "product",
+        vec!["product_id"],
+        vec!["id"],
+    );
+    check_fk(
+        &sql_er_data,
+        "product",
+        "vendor",
+        vec!["vendor_id"],
+        vec!["id"],
+    );
+    check_fk(
+        &sql_er_data,
+        "vendor_address",
+        "vendor",
+        vec!["vendor_id"],
+        vec!["id"],
+    );
 }
 
 #[test]

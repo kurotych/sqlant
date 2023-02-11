@@ -1,5 +1,9 @@
-use clap::{Arg, ArgAction, Command};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use sqlant::{get_generator, lookup_parser, GeneratorConfigOptions};
+
+fn get_arg(args: &ArgMatches, arg_name: &str) -> String {
+    args.get_one::<String>(arg_name).unwrap().to_string()
+}
 
 fn main() {
     let args = Command::new("sqlant")
@@ -19,9 +23,20 @@ fn main() {
                 .help("Draw enum types")
                 .action(ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("schema")
+                .short('s')
+                .long("schema")
+                .help("Schema name")
+                .action(ArgAction::Set)
+                .default_value("public"),
+        )
         .get_matches();
 
-    let mut s = lookup_parser(args.get_one::<String>("connection_string").unwrap());
+    let mut s = lookup_parser(
+        &get_arg(&args, "connection_string"),
+        get_arg(&args, "schema"),
+    );
     let erd = s.load_erd_data();
     let rndr = get_generator();
     let result = rndr.generate(
