@@ -26,7 +26,7 @@ fn custom_schema_columns() {
             vec![
                 ("order_id", "integer", vec![PrimaryKey, NotNull, Unique]),
                 ("order_description", "character varying", vec![]),
-                ("customer_id", "integer", vec![ForeignKey])
+                ("customer_id", "integer", vec![ForeignKey]),
             ],
         ),
     ]);
@@ -69,4 +69,3 @@ fn tables_data() {
     assert_eq!(sql_er_data.tables.len(), 2);
     assert_eq!(sql_er_data.foreign_keys.len(), 1);
 }
-

@@ -284,6 +284,21 @@ impl PostgreSqlERDLoader {
             }
         }
     }
+
+    fn check_is_schema_exists(&mut self) {
+        let res = self
+            .client
+            .query(
+                "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)",
+                &[&self.schema_name],
+            )
+            .unwrap();
+        let row = res.first().unwrap();
+        let exists: bool = row.get("exists");
+        if !exists {
+            panic!("Schema doesn't exist");
+        }
+    }
 }
 
 impl SqlERDataLoader for PostgreSqlERDLoader {
@@ -292,6 +307,8 @@ impl SqlERDataLoader for PostgreSqlERDLoader {
         self.client
             .query(&format!("SET search_path TO {}", self.schema_name), &[])
             .unwrap();
+
+        self.check_is_schema_exists();
 
         self.load_pks();
         self.load_fks();
