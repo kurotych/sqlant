@@ -19,12 +19,17 @@ jobs:
           psql \
           -d $TEST_DATABASE_URL \
           -f ./tests/test_db.sql
+            - run: |
+          psql \
+          -d $TEST_DATABASE_URL \
+          -f ./tests/test_schema.sql
       - run: CON_STRING=$TEST_DATABASE_URL cargo test
       - run: cargo build --release
       - run: ./target/release/sqlant $TEST_DATABASE_URL
       - run: ./target/release/sqlant $TEST_DATABASE_URL --nn
       - run: ./target/release/sqlant $TEST_DATABASE_URL --en
       - run: ./target/release/sqlant $TEST_DATABASE_URL -n -e
+      - run: ./target/release/sqlant $TEST_DATABASE_URL -s test_schema
     resource_class: small
 
 

@@ -3,7 +3,7 @@ use std::{collections::HashMap, env};
 
 fn load_erd() -> SqlERData {
     let con_string = env::var("CON_STRING").unwrap();
-    let mut parser = lookup_parser(&con_string);
+    let mut parser = lookup_parser(&con_string, "public".to_string());
     parser.load_erd_data()
 }
 

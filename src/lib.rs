@@ -15,9 +15,12 @@ pub trait PlantUmlGenerator {
     fn generate(&self, sql_erd: &SqlERData, opts: &GeneratorConfigOptions) -> String;
 }
 
-pub fn lookup_parser(connection_string: &str) -> Box<dyn SqlERDataLoader> {
+pub fn lookup_parser(connection_string: &str, schema_name: String) -> Box<dyn SqlERDataLoader> {
     if connection_string.starts_with("postgresql") {
-        return Box::new(PostgreSqlERDLoader::new(connection_string));
+        return Box::new(PostgreSqlERDLoader::new(
+            connection_string,
+            schema_name,
+        ));
     }
     panic!("Appropriate parser is not found :(");
 }
