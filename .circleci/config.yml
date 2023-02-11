@@ -26,7 +26,6 @@ jobs:
       - run: ./target/release/sqlant $TEST_DATABASE_URL -s test_schema
     resource_class: small
 
-
 workflows:
   default:
     jobs:
