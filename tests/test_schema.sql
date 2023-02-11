@@ -1,5 +1,3 @@
--- Add second table. Add PK and FKS!
-
 CREATE SCHEMA test_schema;
 
 CREATE TABLE test_schema.customers (
