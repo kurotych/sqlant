@@ -16,7 +16,7 @@ pub trait PlantUmlGenerator {
 }
 
 pub fn lookup_parser(connection_string: &str, schema_name: String) -> Box<dyn SqlERDataLoader> {
-    if connection_string.starts_with("postgresql") {
+    if connection_string.starts_with("postgres") {
         return Box::new(PostgreSqlERDLoader::new(connection_string, schema_name));
     }
     panic!("Appropriate parser is not found :(");
