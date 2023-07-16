@@ -1,5 +1,5 @@
 use super::sql_entities::{SqlERData, Table, TableColumn};
-use crate::{GeneratorConfigOptions, PlantUmlGenerator};
+use crate::{GeneratorConfigOptions, ViewGenerator};
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
@@ -14,7 +14,7 @@ static PUML_TEMPLATE: &'static str = "@startuml \n\n\
     {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
     {{ for e in enums}}{e}\n{{ endfor }}@enduml\n";
 
-static ENTITY_TEMPLATE: &'static str = "entity \"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
+static ENTITY_TEMPLATE: &'static str = "\"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
 
 static COLUMN_TEMPLATE: &'static str =
     "{{ if is_pk }}#{{else}}*{{ endif }} <b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" \
@@ -128,8 +128,8 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
     }
 }
 
-impl<'a> PlantUmlGenerator for PlantUmlDefaultGenerator<'a> {
-    fn generate(&self, sql_erd: &SqlERData, opts: &GeneratorConfigOptions) -> String {
+impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
+    fn generate(&self, sql_erd: SqlERData, opts: &GeneratorConfigOptions) -> String {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()

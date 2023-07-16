@@ -1,7 +1,11 @@
+pub mod mermaid_generator;
 pub mod plantuml_generator;
 pub mod psql_erd_loader;
 pub mod sql_entities;
 
+use core::panic;
+
+use mermaid_generator::MermaidGenerator;
 use plantuml_generator::PlantUmlDefaultGenerator;
 use psql_erd_loader::PostgreSqlERDLoader;
 use sql_entities::{SqlERData, SqlERDataLoader};
@@ -11,8 +15,8 @@ pub struct GeneratorConfigOptions {
     pub draw_enums: bool,
 }
 
-pub trait PlantUmlGenerator {
-    fn generate(&self, sql_erd: &SqlERData, opts: &GeneratorConfigOptions) -> String;
+pub trait ViewGenerator {
+    fn generate(&self, sql_erd: SqlERData, opts: &GeneratorConfigOptions) -> String;
 }
 
 pub fn lookup_parser(connection_string: &str, schema_name: String) -> Box<dyn SqlERDataLoader> {
@@ -25,6 +29,10 @@ pub fn lookup_parser(connection_string: &str, schema_name: String) -> Box<dyn Sq
 // If you want to add generator, you need to add input parameter
 // for this function.
 // To distinguish what exactly generator you need.
-pub fn get_generator() -> Box<dyn PlantUmlGenerator> {
-    Box::new(PlantUmlDefaultGenerator::new())
+pub fn get_generator(generator_type: &str) -> Box<dyn ViewGenerator> {
+    match generator_type {
+        "plantuml" => Box::new(PlantUmlDefaultGenerator::new()),
+        "mermaid" => Box::new(MermaidGenerator::new()),
+        _ => panic!(),
+    }
 }
