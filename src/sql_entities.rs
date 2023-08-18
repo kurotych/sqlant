@@ -46,7 +46,7 @@ pub struct ForeignKey {
     pub is_zero_one_to_one: bool, // 0..1 to 1
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Table {
     pub name: String,
     pub columns: Vec<Rc<TableColumn>>,
@@ -57,6 +57,7 @@ pub struct Table {
 pub type SqlEnums = HashMap<String, Vec<String>>;
 
 // ERD - entity relationship diagram
+#[derive(Debug)]
 pub struct SqlERData {
     pub tables: Vec<Rc<Table>>,
     pub foreign_keys: Vec<ForeignKey>,
