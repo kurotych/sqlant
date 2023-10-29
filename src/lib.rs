@@ -33,6 +33,6 @@ pub fn get_generator(generator_type: &str) -> Box<dyn ViewGenerator> {
     match generator_type {
         "plantuml" => Box::new(PlantUmlDefaultGenerator::new()),
         "mermaid" => Box::new(MermaidGenerator::new()),
-        _ => panic!(),
+        _ => panic!("Generator type {generator_type} isn't supported"),
     }
 }
