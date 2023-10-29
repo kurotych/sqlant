@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   run_integration_and_smoke_tests:
     docker:
-      - image: cimg/rust:1.64.0
+      - image: cimg/rust:1.72.0
         environment:
           TEST_DATABASE_URL: postgresql://sqlant_user:sqlant_pswd@localhost/sqlant_db
       - image: cimg/postgres:14.2
