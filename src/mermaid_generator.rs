@@ -5,18 +5,21 @@ use crate::{GeneratorConfigOptions, ViewGenerator};
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
-static MERMAID_TEMPLATE: &str = r#"erDiagram
+static MERMAID_TEMPLATE: &'static str = r#"erDiagram
 {{ for ent in entities}}{ent}{{ endfor }}
+{{ for en in enums}}{en}{{ endfor }}
 {{ for fk in foreign_keys}}{fk}{{ endfor }}
 "#;
 
-static ENTITY_TEMPLATE: &str = "{name} \\{\n{pks}{fks}{others}}\n";
+static ENTITY_TEMPLATE: &'static str = "{name} \\{\n{pks}{fks}{others}}\n";
 
-static COLUMN_TEMPLATE: &str =
+static COLUMN_TEMPLATE: &'static str =
     "    {col.datatype} {col.name} {{ if is_pk }}PK,{{ endif }}{{ if is_fk }}FK{{ endif }}";
 
-static REL_TEMPLATE: &str =
+static REL_TEMPLATE: &'static str =
     "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}: \"\" \n";
+
+const ENUM_TEMPLATE: &str = "\"{name} (ENUM)\" \\{\n{{ for v in values}}    {v} _\n{{ endfor }}}";
 
 #[derive(Serialize)]
 struct SEntity {
@@ -37,7 +40,8 @@ struct SColumn<'a> {
 #[derive(Serialize)]
 struct SMermaid {
     entities: Vec<String>,
-    foreign_keys: Vec<String>, // enums: Vec<String>,
+    enums: Vec<String>,
+    foreign_keys: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -45,6 +49,12 @@ struct SForeignKey {
     source_table_name: String,
     target_table_name: String,
     is_zero_one_to_one: bool,
+}
+
+#[derive(Serialize)]
+struct SEnum {
+    name: String,
+    values: Vec<String>,
 }
 
 pub struct MermaidGenerator<'a> {
@@ -62,7 +72,7 @@ impl<'a> MermaidGenerator<'a> {
             .unwrap();
         str_templates.add_template("ent", ENTITY_TEMPLATE).unwrap();
         str_templates.add_template("rel", REL_TEMPLATE).unwrap();
-        // str_templates.add_template("enum", ENUM_TEPLATE).unwrap();
+        str_templates.add_template("enum", ENUM_TEMPLATE).unwrap();
         str_templates.set_default_formatter(&format_unescaped);
         MermaidGenerator { str_templates }
     }
@@ -121,11 +131,11 @@ impl<'a> MermaidGenerator<'a> {
 
     // Preprocess sql_erd data to make it compatible with mermaid ERD
     fn preprocess(sql_erd: &mut SqlERData) {
-        for table in sql_erd.tables.iter_mut() {
-            let tbl = Rc::make_mut(table);
+        for mut table in sql_erd.tables.iter_mut() {
+            let tbl = Rc::make_mut(&mut table);
             for c in &mut tbl.columns {
                 let c = Rc::make_mut(c);
-                let replaced_string = c.datatype.replace(' ', "_");
+                let replaced_string = c.datatype.replace(" ", "_");
                 c.datatype = replaced_string;
             }
         }
@@ -138,7 +148,7 @@ impl<'a> ViewGenerator for MermaidGenerator<'a> {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(tbl, opts))
+            .map(|tbl| self.entity_render(&tbl, opts))
             .collect();
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys
@@ -157,52 +167,33 @@ impl<'a> ViewGenerator for MermaidGenerator<'a> {
             })
             .collect();
 
-        // dbg!(entities);
-        // MERMAID_TEMPLATE.to_string()
-        // let foreign_keys: Vec<String> = sql_erd
-        //     .foreign_keys
-        //     .iter()
-        //     .map(|fk| {
-        //         self.str_templates
-        //             .render(
-        //                 "rel",
-        //                 &SForeignKey {
-        //                     source_table_name: fk.source_table.name.clone(),
-        //                     target_table_name: fk.target_table.name.clone(),
-        //                     is_zero_one_to_one: fk.is_zero_one_to_one,
-        //                 },
-        //             )
-        //             .unwrap()
-        //     })
-        //     .collect();
-        //
-        // let enums: Vec<String> = if opts.draw_enums {
-        //     sql_erd
-        //         .enums
-        //         .iter()
-        //         .map(|(name, values)| {
-        //             self.str_templates
-        //                 .render(
-        //                     "enum",
-        //                     &SSqlEnum {
-        //                         name: name.to_string(),
-        //                         values: values.to_vec(),
-        //                     },
-        //                 )
-        //                 .unwrap()
-        //         })
-        //         .collect()
-        // } else {
-        //     vec![]
-        // };
-        //
+        let enums: Vec<String> = if opts.draw_enums {
+            sql_erd
+                .enums
+                .iter()
+                .map(|(name, values)| {
+                    self.str_templates
+                        .render(
+                            "enum",
+                            &SEnum {
+                                name: name.to_string(),
+                                values: values.to_vec(),
+                            },
+                        )
+                        .unwrap()
+                })
+                .collect()
+        } else {
+            vec![]
+        };
+
         self.str_templates
             .render(
                 "mermaid",
                 &SMermaid {
                     entities,
+                    enums,
                     foreign_keys,
-                    // enums,
                 },
             )
             .unwrap()

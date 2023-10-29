@@ -24,7 +24,7 @@ static COLUMN_TEMPLATE: &str =
 static REL_TEMPLATE: &str =
     "\"**{source_table_name}**\" {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} \"**{target_table_name}**\"\n";
 
-static ENUM_TEPLATE: &str =
+static ENUM_TEMPLATE: &str =
     "object \"<color:BlueViolet>**{name}**</color> (enum)\" as {name} \\{\n{{ for v in values}} {v}\n{{ endfor }}}\n";
 
 #[derive(Serialize)]
@@ -75,7 +75,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
         str_templates.add_template("pk", COLUMN_TEMPLATE).unwrap();
         str_templates.add_template("ent", ENTITY_TEMPLATE).unwrap();
         str_templates.add_template("rel", REL_TEMPLATE).unwrap();
-        str_templates.add_template("enum", ENUM_TEPLATE).unwrap();
+        str_templates.add_template("enum", ENUM_TEMPLATE).unwrap();
         str_templates.set_default_formatter(&format_unescaped);
         PlantUmlDefaultGenerator { str_templates }
     }
