@@ -46,7 +46,7 @@ pub struct ForeignKey {
     pub is_zero_one_to_one: bool, // 0..1 to 1
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Table {
     pub name: String,
     pub columns: Vec<Rc<TableColumn>>,
@@ -57,6 +57,7 @@ pub struct Table {
 pub type SqlEnums = HashMap<String, Vec<String>>;
 
 // ERD - entity relationship diagram
+#[derive(Debug)]
 pub struct SqlERData {
     pub tables: Vec<Rc<Table>>,
     pub foreign_keys: Vec<ForeignKey>,
@@ -88,14 +89,14 @@ impl Table {
 impl ForeignKey {
     fn is_zero_one_to_one(
         source_table: &Rc<Table>,
-        source_columns: &Vec<Rc<TableColumn>>,
+        source_columns: &[Rc<TableColumn>],
         target_table: &Rc<Table>,
-        target_columns: &Vec<Rc<TableColumn>>,
+        target_columns: &[Rc<TableColumn>],
     ) -> bool {
-        if source_columns.iter().find(|col| !col.is_pk()).is_some() {
+        if source_columns.iter().any(|col| !col.is_pk()) {
             return false;
         }
-        if target_columns.iter().find(|col| !col.is_pk()).is_some() {
+        if target_columns.iter().any(|col| !col.is_pk()) {
             return false;
         }
 
@@ -107,7 +108,7 @@ impl ForeignKey {
             return false;
         }
 
-        return true;
+        true
     }
 
     pub fn new(

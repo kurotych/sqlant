@@ -7,7 +7,9 @@ fn get_arg(args: &ArgMatches, arg_name: &str) -> String {
 
 fn main() {
     let args = Command::new("sqlant")
-        .about("Generate PlantUML ER diagram textual description from SQL connection string")
+        .about(
+            "Generate Entity Relationship diagram textual description from SQL connection string",
+        )
         .arg(Arg::new("connection_string").required(true))
         .arg(
             Arg::new("not_null")
@@ -31,6 +33,15 @@ fn main() {
                 .action(ArgAction::Set)
                 .default_value("public"),
         )
+        .arg(
+            Arg::new("output")
+                .short('o')
+                .value_parser(["plantuml", "mermaid"])
+                .long("output")
+                .help("Generate output in mermaid format")
+                .action(ArgAction::Set)
+                .default_value("plantuml"),
+        )
         .get_matches();
 
     let mut s = lookup_parser(
@@ -38,9 +49,9 @@ fn main() {
         get_arg(&args, "schema"),
     );
     let erd = s.load_erd_data();
-    let rndr = get_generator();
+    let rndr = get_generator(&get_arg(&args, "output"));
     let result = rndr.generate(
-        &erd,
+        erd,
         &GeneratorConfigOptions {
             not_null: args.get_flag("not_null"),
             draw_enums: args.get_flag("enums"),

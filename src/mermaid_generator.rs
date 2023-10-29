@@ -1,41 +1,32 @@
+use std::rc::Rc;
+
 use super::sql_entities::{SqlERData, Table, TableColumn};
 use crate::{GeneratorConfigOptions, ViewGenerator};
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
-pub struct PlantUmlDefaultGenerator<'a> {
-    str_templates: TinyTemplate<'a>,
-}
+static MERMAID_TEMPLATE: &str = r#"erDiagram
+{{ for ent in entities}}{ent}{{ endfor }}
+{{ for en in enums}}{en}{{ endfor }}
+{{ for fk in foreign_keys}}{fk}{{ endfor }}
+"#;
 
-static PUML_TEMPLATE: &str = "@startuml \n\n\
-    hide circle\n\
-    skinparam linetype ortho\n\n\
-    {{ for ent in entities}}{ent}\n{{ endfor }}\n\
-    {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
-    {{ for e in enums}}{e}\n{{ endfor }}@enduml\n";
-
-static ENTITY_TEMPLATE: &str = "\"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
+static ENTITY_TEMPLATE: &str = "{name} \\{\n{pks}{fks}{others}}\n";
 
 static COLUMN_TEMPLATE: &str =
-    "{{ if is_pk }}#{{else}}*{{ endif }} <b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" \
-        {{ if is_pk }}<b><color:goldenrod>(PK) </color></b>{{ endif }}{{ if is_fk }}<b><color:701fc6>(FK) </color></b>{{ endif }}\
-        {{ if is_nn }}<b><color:DarkRed>(NN) </color></b>{{ endif }} //\n";
+    "    {col.datatype} {col.name} {{ if is_pk }}PK,{{ endif }}{{ if is_fk }}FK{{ endif }}";
 
 static REL_TEMPLATE: &str =
-    "\"**{source_table_name}**\" {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} \"**{target_table_name}**\"\n";
+    "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}: \"\" \n";
 
-static ENUM_TEMPLATE: &str =
-    "object \"<color:BlueViolet>**{name}**</color> (enum)\" as {name} \\{\n{{ for v in values}} {v}\n{{ endfor }}}\n";
+const ENUM_TEMPLATE: &str = "\"{name} (ENUM)\" \\{\n{{ for v in values}}    {v} _\n{{ endfor }}}";
 
 #[derive(Serialize)]
-struct SSqlEnum {
+struct SEntity {
     name: String,
-    values: Vec<String>,
-}
-
-#[derive(Serialize)]
-struct Entities {
-    entities: Vec<String>,
+    pks: String,    // Columns that contain PK
+    fks: String,    // Columns that contain FK and don't containt PK
+    others: String, // Columns that don't contain both PK and FK
 }
 
 #[derive(Serialize)]
@@ -47,18 +38,10 @@ struct SColumn<'a> {
 }
 
 #[derive(Serialize)]
-struct SEntity {
-    name: String,
-    pks: String,    // Columns that contain PK
-    fks: String,    // Columns that contain FK and don't containt PK
-    others: String, // Columns that don't contain both PK and FK
-}
-
-#[derive(Serialize)]
-struct SPuml {
+struct SMermaid {
     entities: Vec<String>,
-    foreign_keys: Vec<String>,
     enums: Vec<String>,
+    foreign_keys: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -68,16 +51,30 @@ struct SForeignKey {
     is_zero_one_to_one: bool,
 }
 
-impl<'a> PlantUmlDefaultGenerator<'a> {
-    pub fn new() -> PlantUmlDefaultGenerator<'a> {
+#[derive(Serialize)]
+struct SEnum {
+    name: String,
+    values: Vec<String>,
+}
+
+pub struct MermaidGenerator<'a> {
+    str_templates: TinyTemplate<'a>,
+}
+
+impl<'a> MermaidGenerator<'a> {
+    pub fn new() -> MermaidGenerator<'a> {
         let mut str_templates = TinyTemplate::new();
-        str_templates.add_template("puml", PUML_TEMPLATE).unwrap();
-        str_templates.add_template("pk", COLUMN_TEMPLATE).unwrap();
+        str_templates
+            .add_template("mermaid", MERMAID_TEMPLATE)
+            .unwrap();
+        str_templates
+            .add_template("column", COLUMN_TEMPLATE)
+            .unwrap();
         str_templates.add_template("ent", ENTITY_TEMPLATE).unwrap();
         str_templates.add_template("rel", REL_TEMPLATE).unwrap();
         str_templates.add_template("enum", ENUM_TEMPLATE).unwrap();
         str_templates.set_default_formatter(&format_unescaped);
-        PlantUmlDefaultGenerator { str_templates }
+        MermaidGenerator { str_templates }
     }
 
     fn entity_render(&self, tbl: &Table, opts: &GeneratorConfigOptions) -> String {
@@ -100,18 +97,23 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
                     panic!("Aaa! Something went wrong!");
                 })
                 .fold(String::new(), |acc, col| {
-                    acc + &self
+                    let column = &SColumn {
+                        col: col.as_ref(),
+                        is_fk: col.is_fk(),
+                        is_pk: col.is_pk(),
+                        is_nn: opts.not_null && col.is_nn(),
+                    };
+                    let mut res: String = self
                         .str_templates
-                        .render(
-                            "pk",
-                            &SColumn {
-                                col: col.as_ref(),
-                                is_fk: col.is_fk(),
-                                is_pk: col.is_pk(),
-                                is_nn: opts.not_null && col.is_nn(),
-                            },
-                        )
+                        .render("column", &column)
                         .unwrap()
+                        .trim_end_matches(|c| c == ',')
+                        .into();
+                    if column.is_nn {
+                        res += " \"NN\"";
+                    }
+
+                    acc + &res + "\n"
                 })
         };
         self.str_templates
@@ -126,10 +128,23 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
             )
             .unwrap()
     }
+
+    // Preprocess sql_erd data to make it compatible with mermaid ERD
+    fn preprocess(sql_erd: &mut SqlERData) {
+        for table in sql_erd.tables.iter_mut() {
+            let tbl = Rc::make_mut(table);
+            for c in &mut tbl.columns {
+                let c = Rc::make_mut(c);
+                let replaced_string = c.datatype.replace(' ', "_");
+                c.datatype = replaced_string;
+            }
+        }
+    }
 }
 
-impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
-    fn generate(&self, sql_erd: SqlERData, opts: &GeneratorConfigOptions) -> String {
+impl<'a> ViewGenerator for MermaidGenerator<'a> {
+    fn generate(&self, mut sql_erd: SqlERData, opts: &GeneratorConfigOptions) -> String {
+        Self::preprocess(&mut sql_erd);
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
@@ -160,7 +175,7 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
                     self.str_templates
                         .render(
                             "enum",
-                            &SSqlEnum {
+                            &SEnum {
                                 name: name.to_string(),
                                 values: values.to_vec(),
                             },
@@ -174,11 +189,11 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
 
         self.str_templates
             .render(
-                "puml",
-                &SPuml {
+                "mermaid",
+                &SMermaid {
                     entities,
-                    foreign_keys,
                     enums,
+                    foreign_keys,
                 },
             )
             .unwrap()
