@@ -89,9 +89,9 @@ impl Table {
 impl ForeignKey {
     fn is_zero_one_to_one(
         source_table: &Rc<Table>,
-        source_columns: &Vec<Rc<TableColumn>>,
+        source_columns: &[Rc<TableColumn>],
         target_table: &Rc<Table>,
-        target_columns: &Vec<Rc<TableColumn>>,
+        target_columns: &[Rc<TableColumn>],
     ) -> bool {
         if source_columns.iter().any(|col| !col.is_pk()) {
             return false;

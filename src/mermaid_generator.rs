@@ -5,18 +5,18 @@ use crate::{GeneratorConfigOptions, ViewGenerator};
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
-static MERMAID_TEMPLATE: &'static str = r#"erDiagram
+static MERMAID_TEMPLATE: &str = r#"erDiagram
 {{ for ent in entities}}{ent}{{ endfor }}
 {{ for en in enums}}{en}{{ endfor }}
 {{ for fk in foreign_keys}}{fk}{{ endfor }}
 "#;
 
-static ENTITY_TEMPLATE: &'static str = "{name} \\{\n{pks}{fks}{others}}\n";
+static ENTITY_TEMPLATE: &str = "{name} \\{\n{pks}{fks}{others}}\n";
 
-static COLUMN_TEMPLATE: &'static str =
+static COLUMN_TEMPLATE: &str =
     "    {col.datatype} {col.name} {{ if is_pk }}PK,{{ endif }}{{ if is_fk }}FK{{ endif }}";
 
-static REL_TEMPLATE: &'static str =
+static REL_TEMPLATE: &str =
     "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}: \"\" \n";
 
 const ENUM_TEMPLATE: &str = "\"{name} (ENUM)\" \\{\n{{ for v in values}}    {v} _\n{{ endfor }}}";
@@ -131,11 +131,11 @@ impl<'a> MermaidGenerator<'a> {
 
     // Preprocess sql_erd data to make it compatible with mermaid ERD
     fn preprocess(sql_erd: &mut SqlERData) {
-        for mut table in sql_erd.tables.iter_mut() {
-            let tbl = Rc::make_mut(&mut table);
+        for table in sql_erd.tables.iter_mut() {
+            let tbl = Rc::make_mut(table);
             for c in &mut tbl.columns {
                 let c = Rc::make_mut(c);
-                let replaced_string = c.datatype.replace(" ", "_");
+                let replaced_string = c.datatype.replace(' ', "_");
                 c.datatype = replaced_string;
             }
         }
@@ -148,7 +148,7 @@ impl<'a> ViewGenerator for MermaidGenerator<'a> {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(&tbl, opts))
+            .map(|tbl| self.entity_render(tbl, opts))
             .collect();
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys
