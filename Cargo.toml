@@ -1,13 +1,13 @@
 [package]
 name = "sqlant"
-version = "0.1.5"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/kurotych/sqlant"
-keywords = ["cli", "sql", "plantuml", "postgresql"]
+keywords = ["cli", "sql", "plantuml", "postgresql", "mermaid"]
 categories = ["command-line-utilities"]
 readme = "README.md"
-description = "Generate PlantUML ER diagram textual description from SQL connection string"
+description = "Generate PlantUML/Mermaid ER diagram textual description from SQL connection string"
 authors = ["Anatolii Kurotych <akurotych@gmail.com>"]
 
 [dependencies]
