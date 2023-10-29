@@ -6,13 +6,13 @@ use crate::sql_entities::ColumnConstraints;
 use super::sql_entities::{ForeignKey, SqlERData, SqlERDataLoader, SqlEnums, Table, TableColumn};
 use postgres::{Client, NoTls};
 
-static GET_TABLES_LIST_QUERY: &'static str = r#"
+static GET_TABLES_LIST_QUERY: &str = r#"
 SELECT trim(both '"' from table_name) as table_name
 FROM information_schema.tables where table_schema = $1
 "#;
 
 /// https://www.postgresql.org/docs/current/catalog-pg-attribute.html
-static GET_COLUMNS_BASIC_INFO_QUERY: &'static str = r#"
+static GET_COLUMNS_BASIC_INFO_QUERY: &str = r#"
 SELECT attname                                  AS col_name,
        attnum                                   AS col_num,
        pga.atttypid::regtype::name              AS datatype,
@@ -33,7 +33,7 @@ ORDER  BY relname;
 
 // pg_get_constraintdef(oid) -- just for debugging purposes
 /// https://www.postgresql.org/docs/current/catalog-pg-constraint.html
-static GET_FOREIGN_KEYS_QUERY: &'static str = r#"
+static GET_FOREIGN_KEYS_QUERY: &str = r#"
 SELECT trim(both '"' from conrelid::regclass::name)  AS source_table_name,
        trim(both '"' from confrelid::regclass::name) AS target_table_name,
        conname                   AS foreign_key_name,
@@ -46,7 +46,7 @@ AND    connamespace = to_regnamespace($1)::oid
 ORDER  BY source_table_name;
 "#;
 
-static GET_PKS_QUERY: &'static str = r#"
+static GET_PKS_QUERY: &str = r#"
 SELECT trim(both '"' from conrelid::regclass::name) as table_name,
        conname                  AS primary_key_name,
        conkey                   AS pk_columns_nums,
@@ -57,7 +57,7 @@ AND    connamespace = to_regnamespace($1)::oid
 ORDER  BY table_name;
 "#;
 
-static GET_ENUM_VALUES: &'static str = r#"
+static GET_ENUM_VALUES: &str = r#"
 SELECT enumlabel FROM pg_enum
 JOIN pg_type ON pg_enum.enumtypid = pg_type.oid
 WHERE pg_type.oid = $1;
@@ -114,22 +114,24 @@ impl PostgreSqlERDLoader {
                 for fk in fks {
                     let source_table = Rc::clone(tbl);
 
-                    let source_columns: Vec<Rc<TableColumn>> = (&source_table.columns)
-                        .into_iter()
+                    let source_columns: Vec<Rc<TableColumn>> = source_table
+                        .columns
+                        .iter()
                         .filter(|&col| fk.source_columns_num.contains(&col.col_num))
-                        .map(|tc| Rc::clone(tc))
+                        .map(Rc::clone)
                         .collect();
 
                     let target_table = Rc::clone(
-                        tbls.into_iter()
+                        tbls.iter()
                             .find(|&tbl| tbl.name == fk.target_table_name)
                             .unwrap(),
                     );
 
-                    let target_columns: Vec<Rc<TableColumn>> = (&target_table.columns)
-                        .into_iter()
+                    let target_columns: Vec<Rc<TableColumn>> = target_table
+                        .columns
+                        .iter()
                         .filter(|&col| fk.target_columns_num.contains(&col.col_num))
-                        .map(|tc| Rc::clone(tc))
+                        .map(Rc::clone)
                         .collect();
 
                     res.push(ForeignKey::new(
@@ -215,7 +217,7 @@ impl PostgreSqlERDLoader {
                         return true;
                     }
                 }
-                return false;
+                false
             }
         }
     }
@@ -317,7 +319,7 @@ impl SqlERDataLoader for PostgreSqlERDLoader {
             .client
             .query(GET_TABLES_LIST_QUERY, &[&self.schema_name])
             .unwrap();
-        let table_names: Vec<String> = res.into_iter().map(|row| row.get("table_name")).collect();
+        let table_names: Vec<String> = res.iter().map(|row| row.get("table_name")).collect();
         let (tables, enums) = self.load_tables(table_names);
         let foreign_keys = self.get_fks(&tables);
 

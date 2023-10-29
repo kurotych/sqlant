@@ -7,24 +7,24 @@ pub struct PlantUmlDefaultGenerator<'a> {
     str_templates: TinyTemplate<'a>,
 }
 
-static PUML_TEMPLATE: &'static str = "@startuml \n\n\
+static PUML_TEMPLATE: &str = "@startuml \n\n\
     hide circle\n\
     skinparam linetype ortho\n\n\
     {{ for ent in entities}}{ent}\n{{ endfor }}\n\
     {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
     {{ for e in enums}}{e}\n{{ endfor }}@enduml\n";
 
-static ENTITY_TEMPLATE: &'static str = "\"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
+static ENTITY_TEMPLATE: &str = "\"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
 
-static COLUMN_TEMPLATE: &'static str =
+static COLUMN_TEMPLATE: &str =
     "{{ if is_pk }}#{{else}}*{{ endif }} <b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" \
         {{ if is_pk }}<b><color:goldenrod>(PK) </color></b>{{ endif }}{{ if is_fk }}<b><color:701fc6>(FK) </color></b>{{ endif }}\
         {{ if is_nn }}<b><color:DarkRed>(NN) </color></b>{{ endif }} //\n";
 
-static REL_TEMPLATE: &'static str =
+static REL_TEMPLATE: &str =
     "\"**{source_table_name}**\" {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} \"**{target_table_name}**\"\n";
 
-static ENUM_TEPLATE: &'static str =
+static ENUM_TEPLATE: &str =
     "object \"<color:BlueViolet>**{name}**</color> (enum)\" as {name} \\{\n{{ for v in values}} {v}\n{{ endfor }}}\n";
 
 #[derive(Serialize)]
@@ -133,7 +133,7 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(&tbl, opts))
+            .map(|tbl| self.entity_render(tbl, opts))
             .collect();
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys

@@ -93,10 +93,10 @@ impl ForeignKey {
         target_table: &Rc<Table>,
         target_columns: &Vec<Rc<TableColumn>>,
     ) -> bool {
-        if source_columns.iter().find(|col| !col.is_pk()).is_some() {
+        if source_columns.iter().any(|col| !col.is_pk()) {
             return false;
         }
-        if target_columns.iter().find(|col| !col.is_pk()).is_some() {
+        if target_columns.iter().any(|col| !col.is_pk()) {
             return false;
         }
 
@@ -108,7 +108,7 @@ impl ForeignKey {
             return false;
         }
 
-        return true;
+        true
     }
 
     pub fn new(
