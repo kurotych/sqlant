@@ -14,7 +14,7 @@ static PUML_TEMPLATE: &str = "@startuml \n\n\
     {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
     {{ for e in enums}}{e}\n{{ endfor }}@enduml\n";
 
-static ENTITY_TEMPLATE: &str = "\"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
+static ENTITY_TEMPLATE: &str = "class \"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
 
 static COLUMN_TEMPLATE: &str =
     "{{ if is_pk }}#{{else}}*{{ endif }} <b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" \
