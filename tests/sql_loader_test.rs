@@ -1,5 +1,5 @@
 use sqlant::{lookup_parser, sql_entities::ColumnConstraints::*, sql_entities::*};
-use std::{collections::HashMap, env};
+use std::{collections::BTreeMap, env};
 
 mod utils;
 use crate::utils::check_fk;
@@ -13,7 +13,7 @@ fn load_erd() -> SqlERData {
 #[test]
 fn enums() {
     let sql_er_data: SqlERData = load_erd();
-    let mut expected_hash_map = HashMap::new();
+    let mut expected_hash_map = BTreeMap::new();
     expected_hash_map.insert(
         "product_category".to_string(),
         vec![
@@ -28,7 +28,7 @@ fn enums() {
 #[test]
 fn columns() {
     let sql_er_data: SqlERData = load_erd();
-    let tables = HashMap::from([
+    let tables = BTreeMap::from([
         (
             "order_detail_approval",
             vec![

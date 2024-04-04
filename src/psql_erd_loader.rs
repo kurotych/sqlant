@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::rc::Rc;
 
 use crate::SqlantError;
@@ -10,7 +10,9 @@ use postgres::{Client, NoTls};
 
 static GET_TABLES_LIST_QUERY: &str = r#"
 SELECT trim(both '"' from table_name) as table_name
-FROM information_schema.tables where table_schema = $1
+FROM information_schema.tables
+WHERE table_schema = $1
+ORDER BY table_name;
 "#;
 
 /// https://www.postgresql.org/docs/current/catalog-pg-attribute.html
@@ -30,7 +32,7 @@ INNER JOIN pg_type
 WHERE relname =  any($1)
 AND    NOT attisdropped
 AND    attnum  > 0
-ORDER  BY relname;
+ORDER  BY relname, col_name;
 "#;
 
 // pg_get_constraintdef(oid) -- just for debugging purposes
@@ -60,9 +62,11 @@ ORDER  BY table_name;
 "#;
 
 static GET_ENUM_VALUES: &str = r#"
-SELECT enumlabel FROM pg_enum
+SELECT enumlabel
+FROM pg_enum
 JOIN pg_type ON pg_enum.enumtypid = pg_type.oid
-WHERE pg_type.oid = $1;
+WHERE pg_type.oid = $1
+ORDER BY pg_enum;
 "#;
 
 /// https://www.postgresql.org/docs/current/view-pg-indexes.html
@@ -93,8 +97,8 @@ struct FkInternal {
 pub struct PostgreSqlERDLoader {
     client: Client,
     schema_name: String,
-    pks: HashMap<String, Vec<i16>>,            // table_name, col_nums
-    fks: HashMap<String, HashSet<FkInternal>>, // key - source_table_name
+    pks: BTreeMap<String, Vec<i16>>, // table_name, col_nums
+    fks: BTreeMap<String, HashSet<FkInternal>>, // key - source_table_name
 }
 
 impl PostgreSqlERDLoader {
@@ -106,8 +110,8 @@ impl PostgreSqlERDLoader {
         Ok(PostgreSqlERDLoader {
             client,
             schema_name,
-            pks: HashMap::new(),
-            fks: HashMap::new(),
+            pks: BTreeMap::new(),
+            fks: BTreeMap::new(),
         })
     }
 
@@ -152,9 +156,9 @@ impl PostgreSqlERDLoader {
     }
 
     fn load_tables(&mut self, table_names: Vec<String>) -> (Vec<Rc<Table>>, SqlEnums) {
-        let mut columns: HashMap<String, Vec<Rc<TableColumn>>> = HashMap::new();
+        let mut columns: BTreeMap<String, Vec<Rc<TableColumn>>> = BTreeMap::new();
         // If current database has enum types we load it here
-        let mut enums: SqlEnums = HashMap::new();
+        let mut enums: SqlEnums = BTreeMap::new();
         for tbl_name in &table_names {
             columns.insert(tbl_name.to_string(), vec![]);
         }
@@ -203,7 +207,7 @@ impl PostgreSqlERDLoader {
                     constraints,
                 }));
         }
-        // Transform HashMap<String, Vec<Rc<TableColumn>>> into Vec<Table>
+        // Transform BTreeMap<String, Vec<Rc<TableColumn>>> into Vec<Table>
         (
             columns
                 .iter()
