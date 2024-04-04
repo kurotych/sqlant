@@ -6,7 +6,7 @@ use crate::utils::check_fk;
 
 fn load_erd() -> SqlERData {
     let con_string = env::var("CON_STRING").unwrap();
-    let mut parser = lookup_parser(&con_string, "public".to_string());
+    let mut parser = lookup_parser(&con_string, "public".to_string()).unwrap();
     parser.load_erd_data()
 }
 
