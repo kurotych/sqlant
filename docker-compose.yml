@@ -2,12 +2,8 @@ services:
     db:
         image: postgres
         environment:
-            POSTGRES_USER: sqlant_user
-            POSTGRES_PASSWORD: sqlant_pswd
-            POSTGRES_DB: sqlant_db
+            POSTGRES_USER: sql
+            POSTGRES_PASSWORD: sql
+            POSTGRES_DB: sql
         ports:
-            - 5432:5432
-    adminer:
-        image: adminer
-        ports:
-            - 8080:8080
+            - 5434:5432

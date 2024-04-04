@@ -5,12 +5,12 @@ jobs:
     docker:
       - image: cimg/rust:1.72.0
         environment:
-          TEST_DATABASE_URL: postgresql://sqlant_user:sqlant_pswd@localhost/sqlant_db
+          TEST_DATABASE_URL: postgresql://sql:sql@localhost/sql
       - image: cimg/postgres:14.2
         environment:
-            POSTGRES_USER: sqlant_user
-            POSTGRES_PASSWORD: sqlant_pswd
-            POSTGRES_DB: sqlant_db
+            POSTGRES_USER: sql
+            POSTGRES_PASSWORD: sql
+            POSTGRES_DB: sql
     steps:
       - checkout
       - run: cargo fmt --check
