@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::rc::Rc;
 use std::vec::Vec;
 
@@ -54,7 +54,7 @@ pub struct Table {
 }
 
 // key - enum_name (type) v = enum values
-pub type SqlEnums = HashMap<String, Vec<String>>;
+pub type SqlEnums = BTreeMap<String, Vec<String>>;
 
 // ERD - entity relationship diagram
 #[derive(Clone, Debug)]

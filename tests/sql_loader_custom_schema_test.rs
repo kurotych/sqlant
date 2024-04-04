@@ -1,5 +1,5 @@
 use sqlant::{lookup_parser, sql_entities::ColumnConstraints::*, sql_entities::*};
-use std::{collections::HashMap, env};
+use std::{collections::BTreeMap, env};
 
 mod utils;
 use crate::utils::check_fk;
@@ -13,7 +13,7 @@ fn load_erd() -> SqlERData {
 #[test]
 fn custom_schema_columns() {
     let sql_er_data: SqlERData = load_erd();
-    let tables = HashMap::from([
+    let tables = BTreeMap::from([
         (
             "customers",
             vec![
