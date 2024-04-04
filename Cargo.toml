@@ -11,6 +11,7 @@ description = "Generate PlantUML/Mermaid ER diagram textual description from SQL
 authors = ["Anatolii Kurotych <akurotych@gmail.com>"]
 
 [dependencies]
+thiserror = "1.0"
 postgres = "0.19.4"
 tinytemplate = "1.2"
 serde = { version = "1.0", features = ["derive"] }
