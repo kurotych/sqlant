@@ -7,7 +7,7 @@ pub struct PlantUmlDefaultGenerator<'a> {
     str_templates: TinyTemplate<'a>,
 }
 
-static PUML_TEMPLATE: &str = "@startuml \n\n\
+static PUML_TEMPLATE: &str = "@startuml\n\n\
     hide circle\n\
     skinparam linetype ortho\n\n\
     {{ for ent in entities}}{ent}\n{{ endfor }}\n\

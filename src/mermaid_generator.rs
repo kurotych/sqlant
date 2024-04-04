@@ -14,10 +14,10 @@ static MERMAID_TEMPLATE: &str = r#"erDiagram
 static ENTITY_TEMPLATE: &str = "{name} \\{\n{pks}{fks}{others}}\n";
 
 static COLUMN_TEMPLATE: &str =
-    "    {col.datatype} {col.name} {{ if is_pk }}PK,{{ endif }}{{ if is_fk }}FK{{ endif }}";
+    "    {col.datatype} {col.name}{{ if is_pk_or_fk }} {{ endif }}{{ if is_pk }}PK,{{ endif }}{{ if is_fk }}FK{{ endif }}";
 
 static REL_TEMPLATE: &str =
-    "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}: \"\" \n";
+    "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}: \"\"\n";
 
 const ENUM_TEMPLATE: &str = "\"{name} (ENUM)\" \\{\n{{ for v in values}}    {v} _\n{{ endfor }}}";
 
@@ -34,6 +34,7 @@ struct SColumn<'a> {
     col: &'a TableColumn,
     is_fk: bool,
     is_pk: bool,
+    is_pk_or_fk: bool,
     is_nn: bool,
 }
 
@@ -101,6 +102,7 @@ impl<'a> MermaidGenerator<'a> {
                         col: col.as_ref(),
                         is_fk: col.is_fk(),
                         is_pk: col.is_pk(),
+                        is_pk_or_fk: col.is_pk() || col.is_fk(),
                         is_nn: opts.not_null && col.is_nn(),
                     };
                     let mut res: String = self
