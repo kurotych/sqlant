@@ -25,7 +25,7 @@ const ENUM_TEMPLATE: &str = "\"{name} (ENUM)\" \\{\n{{ for v in values}}    {v} 
 struct SEntity {
     name: String,
     pks: String,    // Columns that contain PK
-    fks: String,    // Columns that contain FK and don't containt PK
+    fks: String,    // Columns that contain FK and don't contain PK
     others: String, // Columns that don't contain both PK and FK
 }
 

@@ -79,7 +79,7 @@ WHERE pg_type.oid = $1;
 //     indexname;
 // "#;
 
-/// Inernal type of Foreign Key. With values that loaded from db
+/// Internal type of Foreign Key. With values that loaded from db
 #[derive(Debug, Hash, PartialEq, Eq)]
 struct FkInternal {
     source_table_name: String,
