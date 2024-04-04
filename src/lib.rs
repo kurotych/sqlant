@@ -1,10 +1,10 @@
+pub mod error;
 pub mod mermaid_generator;
 pub mod plantuml_generator;
 pub mod psql_erd_loader;
 pub mod sql_entities;
 
-use core::panic;
-
+pub use error::SqlantError;
 use mermaid_generator::MermaidGenerator;
 use plantuml_generator::PlantUmlDefaultGenerator;
 use psql_erd_loader::PostgreSqlERDLoader;
@@ -19,11 +19,14 @@ pub trait ViewGenerator {
     fn generate(&self, sql_erd: SqlERData, opts: &GeneratorConfigOptions) -> String;
 }
 
-pub fn lookup_parser(connection_string: &str, schema_name: String) -> Box<dyn SqlERDataLoader> {
-    if connection_string.starts_with("postgres") {
-        return Box::new(PostgreSqlERDLoader::new(connection_string, schema_name));
-    }
-    panic!("Appropriate parser is not found :(");
+pub fn lookup_parser(
+    connection_string: &str,
+    schema_name: String,
+) -> Result<Box<dyn SqlERDataLoader>, SqlantError> {
+    Ok(Box::new(PostgreSqlERDLoader::new(
+        connection_string,
+        schema_name,
+    )?))
 }
 
 // If you want to add generator, you need to add input parameter

@@ -1,9 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use crate::sql_entities::ColumnConstraints;
+use crate::SqlantError;
 
-use super::sql_entities::{ForeignKey, SqlERData, SqlERDataLoader, SqlEnums, Table, TableColumn};
+use super::sql_entities::{
+    ColumnConstraints, ForeignKey, SqlERData, SqlERDataLoader, SqlEnums, Table, TableColumn,
+};
 use postgres::{Client, NoTls};
 
 static GET_TABLES_LIST_QUERY: &str = r#"
@@ -96,14 +98,17 @@ pub struct PostgreSqlERDLoader {
 }
 
 impl PostgreSqlERDLoader {
-    pub fn new(connection_string: &str, schema_name: String) -> PostgreSqlERDLoader {
-        let client = Client::connect(connection_string, NoTls).unwrap();
-        PostgreSqlERDLoader {
+    pub fn new(
+        connection_string: &str,
+        schema_name: String,
+    ) -> Result<PostgreSqlERDLoader, SqlantError> {
+        let client = Client::connect(connection_string, NoTls)?;
+        Ok(PostgreSqlERDLoader {
             client,
             schema_name,
             pks: HashMap::new(),
             fks: HashMap::new(),
-        }
+        })
     }
 
     /// Return empty vector if no FKs

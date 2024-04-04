@@ -47,7 +47,8 @@ fn main() {
     let mut s = lookup_parser(
         &get_arg(&args, "connection_string"),
         get_arg(&args, "schema"),
-    );
+    )
+    .unwrap();
     let erd = s.load_erd_data();
     let rndr = get_generator(&get_arg(&args, "output"));
     let result = rndr.generate(
