@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use crate::SqlantError;
@@ -86,7 +86,7 @@ ORDER BY pg_enum;
 // "#;
 
 /// Internal type of Foreign Key. With values that loaded from db
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
 struct FkInternal {
     source_table_name: String,
     source_columns_num: Vec<i16>,
@@ -98,7 +98,7 @@ pub struct PostgreSqlERDLoader {
     client: Client,
     schema_name: String,
     pks: BTreeMap<String, Vec<i16>>, // table_name, col_nums
-    fks: BTreeMap<String, HashSet<FkInternal>>, // key - source_table_name
+    fks: BTreeMap<String, BTreeSet<FkInternal>>, // key - source_table_name
 }
 
 impl PostgreSqlERDLoader {
@@ -242,8 +242,8 @@ impl PostgreSqlERDLoader {
         &mut self,
         table_name: &str,
         table_column: i16,
-    ) -> HashSet<ColumnConstraints> {
-        let mut res = HashSet::new();
+    ) -> BTreeSet<ColumnConstraints> {
+        let mut res = BTreeSet::new();
         if self.is_pk(table_name, table_column) {
             // The PRIMARY KEY of a table is a combination of NOT NULL and UNIQUE constraint.
             res.insert(ColumnConstraints::PrimaryKey);
@@ -289,7 +289,7 @@ impl PostgreSqlERDLoader {
             if let Some(fks) = self.fks.get_mut(&source_table_name) {
                 fks.insert(fk);
             } else {
-                let mut hs = HashSet::new();
+                let mut hs = BTreeSet::new();
                 hs.insert(fk);
                 self.fks.insert(source_table_name, hs);
             }

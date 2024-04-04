@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use std::vec::Vec;
 
@@ -10,7 +10,7 @@ pub struct TableColumn {
     // Different SQL databases have different types.
     // Let's keep it as string not ENUM
     pub datatype: String,
-    pub constraints: HashSet<ColumnConstraints>,
+    pub constraints: BTreeSet<ColumnConstraints>,
 }
 
 impl TableColumn {
@@ -25,7 +25,7 @@ impl TableColumn {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum ColumnConstraints {
     NotNull,
     PrimaryKey,
