@@ -668,7 +668,7 @@ dependencies = [
 
 [[package]]
 name = "sqlant"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "lazy_static",
