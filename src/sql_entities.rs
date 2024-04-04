@@ -37,7 +37,7 @@ pub enum ColumnConstraints {
 }
 
 // Types of relationship https://launchschool.com/books/sql_first_edition/read/multi_tables
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ForeignKey {
     pub source_table: Rc<Table>,
     pub source_columns: Vec<Rc<TableColumn>>,
@@ -57,7 +57,7 @@ pub struct Table {
 pub type SqlEnums = HashMap<String, Vec<String>>;
 
 // ERD - entity relationship diagram
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SqlERData {
     pub tables: Vec<Rc<Table>>,
     pub foreign_keys: Vec<ForeignKey>,
