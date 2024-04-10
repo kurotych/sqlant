@@ -67,7 +67,7 @@ pub struct SqlERData {
 #[async_trait::async_trait]
 pub trait SqlERDataLoader {
     // Connection string has to be passed in "constructor"
-    async fn load_erd_data(&mut self) -> SqlERData;
+    async fn load_erd_data(&mut self) -> Result<SqlERData, crate::SqlantError>;
 }
 
 impl Table {

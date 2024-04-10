@@ -18,7 +18,11 @@ pub struct GeneratorConfigOptions {
 }
 
 pub trait ViewGenerator {
-    fn generate(&self, sql_erd: SqlERData, opts: &GeneratorConfigOptions) -> String;
+    fn generate(
+        &self,
+        sql_erd: SqlERData,
+        opts: &GeneratorConfigOptions,
+    ) -> Result<String, SqlantError>;
 }
 
 pub async fn lookup_parser(
@@ -40,9 +44,9 @@ pub enum GeneratorType {
 // If you want to add generator, you need to add input parameter
 // for this function.
 // To distinguish what exactly generator you need.
-pub fn get_generator(generator_type: GeneratorType) -> Box<dyn ViewGenerator> {
+pub fn get_generator(generator_type: GeneratorType) -> Result<Box<dyn ViewGenerator>, SqlantError> {
     match generator_type {
-        GeneratorType::PlantUML => Box::new(PlantUmlDefaultGenerator::new()),
-        GeneratorType::Mermaid => Box::new(MermaidGenerator::new()),
+        GeneratorType::PlantUML => Ok(Box::new(PlantUmlDefaultGenerator::new()?)),
+        GeneratorType::Mermaid => Ok(Box::new(MermaidGenerator::new()?)),
     }
 }

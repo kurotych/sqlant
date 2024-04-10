@@ -69,18 +69,22 @@ struct SForeignKey {
 }
 
 impl<'a> PlantUmlDefaultGenerator<'a> {
-    pub fn new() -> PlantUmlDefaultGenerator<'a> {
+    pub fn new() -> Result<PlantUmlDefaultGenerator<'a>, crate::SqlantError> {
         let mut str_templates = TinyTemplate::new();
-        str_templates.add_template("puml", PUML_TEMPLATE).unwrap();
-        str_templates.add_template("pk", COLUMN_TEMPLATE).unwrap();
-        str_templates.add_template("ent", ENTITY_TEMPLATE).unwrap();
-        str_templates.add_template("rel", REL_TEMPLATE).unwrap();
-        str_templates.add_template("enum", ENUM_TEMPLATE).unwrap();
+        str_templates.add_template("puml", PUML_TEMPLATE)?;
+        str_templates.add_template("pk", COLUMN_TEMPLATE)?;
+        str_templates.add_template("ent", ENTITY_TEMPLATE)?;
+        str_templates.add_template("rel", REL_TEMPLATE)?;
+        str_templates.add_template("enum", ENUM_TEMPLATE)?;
         str_templates.set_default_formatter(&format_unescaped);
-        PlantUmlDefaultGenerator { str_templates }
+        Ok(PlantUmlDefaultGenerator { str_templates })
     }
 
-    fn entity_render(&self, tbl: &Table, opts: &GeneratorConfigOptions) -> String {
+    fn entity_render(
+        &self,
+        tbl: &Table,
+        opts: &GeneratorConfigOptions,
+    ) -> Result<String, crate::SqlantError> {
         // if pk_render - render only pk columns
         // if fk_render - render only pure FK columns (Non PK)
         // if both are false return non pk and non fk
@@ -114,26 +118,28 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
                         .unwrap()
                 })
         };
-        self.str_templates
-            .render(
-                "ent",
-                &SEntity {
-                    pks: columns_render(true, false),
-                    fks: columns_render(false, true),
-                    others: columns_render(false, false),
-                    name: tbl.name.clone(),
-                },
-            )
-            .unwrap()
+        Ok(self.str_templates.render(
+            "ent",
+            &SEntity {
+                pks: columns_render(true, false),
+                fks: columns_render(false, true),
+                others: columns_render(false, false),
+                name: tbl.name.clone(),
+            },
+        )?)
     }
 }
 
 impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
-    fn generate(&self, sql_erd: SqlERData, opts: &GeneratorConfigOptions) -> String {
+    fn generate(
+        &self,
+        sql_erd: SqlERData,
+        opts: &GeneratorConfigOptions,
+    ) -> Result<String, crate::SqlantError> {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(tbl, opts))
+            .map(|tbl| self.entity_render(tbl, opts).unwrap())
             .collect();
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys
@@ -172,15 +178,13 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
             vec![]
         };
 
-        self.str_templates
-            .render(
-                "puml",
-                &SPuml {
-                    entities,
-                    foreign_keys,
-                    enums,
-                },
-            )
-            .unwrap()
+        Ok(self.str_templates.render(
+            "puml",
+            &SPuml {
+                entities,
+                foreign_keys,
+                enums,
+            },
+        )?)
     }
 }

@@ -63,22 +63,22 @@ pub struct MermaidGenerator<'a> {
 }
 
 impl<'a> MermaidGenerator<'a> {
-    pub fn new() -> MermaidGenerator<'a> {
+    pub fn new() -> Result<MermaidGenerator<'a>, crate::SqlantError> {
         let mut str_templates = TinyTemplate::new();
-        str_templates
-            .add_template("mermaid", MERMAID_TEMPLATE)
-            .unwrap();
-        str_templates
-            .add_template("column", COLUMN_TEMPLATE)
-            .unwrap();
-        str_templates.add_template("ent", ENTITY_TEMPLATE).unwrap();
-        str_templates.add_template("rel", REL_TEMPLATE).unwrap();
-        str_templates.add_template("enum", ENUM_TEMPLATE).unwrap();
+        str_templates.add_template("mermaid", MERMAID_TEMPLATE)?;
+        str_templates.add_template("column", COLUMN_TEMPLATE)?;
+        str_templates.add_template("ent", ENTITY_TEMPLATE)?;
+        str_templates.add_template("rel", REL_TEMPLATE)?;
+        str_templates.add_template("enum", ENUM_TEMPLATE)?;
         str_templates.set_default_formatter(&format_unescaped);
-        MermaidGenerator { str_templates }
+        Ok(MermaidGenerator { str_templates })
     }
 
-    fn entity_render(&self, tbl: &Table, opts: &GeneratorConfigOptions) -> String {
+    fn entity_render(
+        &self,
+        tbl: &Table,
+        opts: &GeneratorConfigOptions,
+    ) -> Result<String, crate::SqlantError> {
         // if pk_render - render only pk columns
         // if fk_render - render only pure FK columns (Non PK)
         // if both are false return non pk and non fk
@@ -118,17 +118,15 @@ impl<'a> MermaidGenerator<'a> {
                     acc + &res + "\n"
                 })
         };
-        self.str_templates
-            .render(
-                "ent",
-                &SEntity {
-                    pks: columns_render(true, false),
-                    fks: columns_render(false, true),
-                    others: columns_render(false, false),
-                    name: tbl.name.clone(),
-                },
-            )
-            .unwrap()
+        Ok(self.str_templates.render(
+            "ent",
+            &SEntity {
+                pks: columns_render(true, false),
+                fks: columns_render(false, true),
+                others: columns_render(false, false),
+                name: tbl.name.clone(),
+            },
+        )?)
     }
 
     // Preprocess sql_erd data to make it compatible with mermaid ERD
@@ -145,12 +143,16 @@ impl<'a> MermaidGenerator<'a> {
 }
 
 impl<'a> ViewGenerator for MermaidGenerator<'a> {
-    fn generate(&self, mut sql_erd: SqlERData, opts: &GeneratorConfigOptions) -> String {
+    fn generate(
+        &self,
+        mut sql_erd: SqlERData,
+        opts: &GeneratorConfigOptions,
+    ) -> Result<String, crate::SqlantError> {
         Self::preprocess(&mut sql_erd);
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(tbl, opts))
+            .map(|tbl| self.entity_render(tbl, opts).unwrap())
             .collect();
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys
@@ -189,15 +191,13 @@ impl<'a> ViewGenerator for MermaidGenerator<'a> {
             vec![]
         };
 
-        self.str_templates
-            .render(
-                "mermaid",
-                &SMermaid {
-                    entities,
-                    enums,
-                    foreign_keys,
-                },
-            )
-            .unwrap()
+        Ok(self.str_templates.render(
+            "mermaid",
+            &SMermaid {
+                entities,
+                enums,
+                foreign_keys,
+            },
+        )?)
     }
 }
