@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use super::sql_entities::{SqlERData, Table, TableColumn};
 use crate::{GeneratorConfigOptions, ViewGenerator};
@@ -134,9 +134,9 @@ impl<'a> MermaidGenerator<'a> {
     // Preprocess sql_erd data to make it compatible with mermaid ERD
     fn preprocess(sql_erd: &mut SqlERData) {
         for table in sql_erd.tables.iter_mut() {
-            let tbl = Rc::make_mut(table);
+            let tbl = Arc::make_mut(table);
             for c in &mut tbl.columns {
-                let c = Rc::make_mut(c);
+                let c = Arc::make_mut(c);
                 let replaced_string = c.datatype.replace(' ', "_");
                 c.datatype = replaced_string;
             }

@@ -4,15 +4,17 @@ use std::{collections::BTreeMap, env};
 mod utils;
 use crate::utils::check_fk;
 
-fn load_erd() -> SqlERData {
+async fn load_erd() -> SqlERData {
     let con_string = env::var("CON_STRING").unwrap();
-    let mut parser = lookup_parser(&con_string, "public".to_string()).unwrap();
-    parser.load_erd_data()
+    let mut parser = lookup_parser(&con_string, "public".to_string())
+        .await
+        .unwrap();
+    parser.load_erd_data().await
 }
 
-#[test]
-fn enums() {
-    let sql_er_data: SqlERData = load_erd();
+#[tokio::test]
+async fn enums() {
+    let sql_er_data: SqlERData = load_erd().await;
     let mut expected_hash_map = BTreeMap::new();
     expected_hash_map.insert(
         "product_category".to_string(),
@@ -25,9 +27,9 @@ fn enums() {
     assert_eq!(sql_er_data.enums, expected_hash_map);
 }
 
-#[test]
-fn columns() {
-    let sql_er_data: SqlERData = load_erd();
+#[tokio::test]
+async fn columns() {
+    let sql_er_data: SqlERData = load_erd().await;
     let tables = BTreeMap::from([
         (
             "order_detail_approval",
@@ -77,9 +79,9 @@ fn columns() {
     }
 }
 
-#[test]
-fn fks() {
-    let sql_er_data: SqlERData = load_erd();
+#[tokio::test]
+async fn fks() {
+    let sql_er_data: SqlERData = load_erd().await;
     check_fk(
         &sql_er_data,
         "order_detail_approval",
@@ -132,16 +134,16 @@ fn fks() {
     );
 }
 
-#[test]
-fn tables_data() {
-    let sql_er_data: SqlERData = load_erd();
+#[tokio::test]
+async fn tables_data() {
+    let sql_er_data: SqlERData = load_erd().await;
     assert_eq!(sql_er_data.tables.len(), 8);
     assert_eq!(sql_er_data.foreign_keys.len(), 7);
 }
 
-#[test]
-fn is_zero_one_to_one() {
-    let sql_er_data: SqlERData = load_erd();
+#[tokio::test]
+async fn is_zero_one_to_one() {
+    let sql_er_data: SqlERData = load_erd().await;
     for fk in &sql_er_data.foreign_keys {
         if fk.source_table.name == "vendor_address"
             || fk.source_table.name == "order_detail_approval"
@@ -153,9 +155,9 @@ fn is_zero_one_to_one() {
     }
 }
 
-#[test]
-fn composite_pk() {
-    let sql_er_data: SqlERData = load_erd();
+#[tokio::test]
+async fn composite_pk() {
+    let sql_er_data: SqlERData = load_erd().await;
     for tbl in &sql_er_data.tables {
         if tbl.name == "order_detail_approval" || tbl.name == "order_detail" {
             assert!(tbl.has_composite_pk);

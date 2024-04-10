@@ -5,7 +5,8 @@ fn get_arg(args: &ArgMatches, arg_name: &str) -> String {
     args.get_one::<String>(arg_name).unwrap().to_string()
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Command::new("sqlant")
         .about(
             "Generate Entity Relationship diagram textual description from SQL connection string",
@@ -48,8 +49,9 @@ fn main() {
         &get_arg(&args, "connection_string"),
         get_arg(&args, "schema"),
     )
+    .await
     .unwrap();
-    let erd = s.load_erd_data();
+    let erd = s.load_erd_data().await;
     let rndr = get_generator(&get_arg(&args, "output"));
     let result = rndr.generate(
         erd,

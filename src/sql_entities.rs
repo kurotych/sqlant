@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::vec::Vec;
 
 #[derive(Debug, Clone, Serialize)]
@@ -39,17 +39,17 @@ pub enum ColumnConstraints {
 // Types of relationship https://launchschool.com/books/sql_first_edition/read/multi_tables
 #[derive(Clone, Debug)]
 pub struct ForeignKey {
-    pub source_table: Rc<Table>,
-    pub source_columns: Vec<Rc<TableColumn>>,
-    pub target_table: Rc<Table>,
-    pub target_columns: Vec<Rc<TableColumn>>,
+    pub source_table: Arc<Table>,
+    pub source_columns: Vec<Arc<TableColumn>>,
+    pub target_table: Arc<Table>,
+    pub target_columns: Vec<Arc<TableColumn>>,
     pub is_zero_one_to_one: bool, // 0..1 to 1
 }
 
 #[derive(Debug, Clone)]
 pub struct Table {
     pub name: String,
-    pub columns: Vec<Rc<TableColumn>>,
+    pub columns: Vec<Arc<TableColumn>>,
     pub has_composite_pk: bool,
 }
 
@@ -59,18 +59,19 @@ pub type SqlEnums = BTreeMap<String, Vec<String>>;
 // ERD - entity relationship diagram
 #[derive(Clone, Debug)]
 pub struct SqlERData {
-    pub tables: Vec<Rc<Table>>,
+    pub tables: Vec<Arc<Table>>,
     pub foreign_keys: Vec<ForeignKey>,
     pub enums: SqlEnums,
 }
 
+#[async_trait::async_trait]
 pub trait SqlERDataLoader {
     // Connection string has to be passed in "constructor"
-    fn load_erd_data(&mut self) -> SqlERData;
+    async fn load_erd_data(&mut self) -> SqlERData;
 }
 
 impl Table {
-    pub fn new(name: String, columns: Vec<Rc<TableColumn>>) -> Table {
+    pub fn new(name: String, columns: Vec<Arc<TableColumn>>) -> Table {
         let has_composite_pk = columns.iter().fold(0, |acc, x| {
             acc + x // there is a bit overhead here, because we can interrupt after acc > 1
                 .as_ref() // but it looks nicely than `for ... in ...` loop
@@ -88,10 +89,10 @@ impl Table {
 
 impl ForeignKey {
     fn is_zero_one_to_one(
-        source_table: &Rc<Table>,
-        source_columns: &[Rc<TableColumn>],
-        target_table: &Rc<Table>,
-        target_columns: &[Rc<TableColumn>],
+        source_table: &Arc<Table>,
+        source_columns: &[Arc<TableColumn>],
+        target_table: &Arc<Table>,
+        target_columns: &[Arc<TableColumn>],
     ) -> bool {
         if source_columns.iter().any(|col| !col.is_pk()) {
             return false;
@@ -112,10 +113,10 @@ impl ForeignKey {
     }
 
     pub fn new(
-        source_table: Rc<Table>,
-        source_columns: Vec<Rc<TableColumn>>,
-        target_table: Rc<Table>,
-        target_columns: Vec<Rc<TableColumn>>,
+        source_table: Arc<Table>,
+        source_columns: Vec<Arc<TableColumn>>,
+        target_table: Arc<Table>,
+        target_columns: Vec<Arc<TableColumn>>,
     ) -> ForeignKey {
         let is_zero_one_to_one = Self::is_zero_one_to_one(
             &source_table,

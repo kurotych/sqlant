@@ -19,14 +19,13 @@ pub trait ViewGenerator {
     fn generate(&self, sql_erd: SqlERData, opts: &GeneratorConfigOptions) -> String;
 }
 
-pub fn lookup_parser(
+pub async fn lookup_parser(
     connection_string: &str,
     schema_name: String,
 ) -> Result<Box<dyn SqlERDataLoader>, SqlantError> {
-    Ok(Box::new(PostgreSqlERDLoader::new(
-        connection_string,
-        schema_name,
-    )?))
+    Ok(Box::new(
+        PostgreSqlERDLoader::new(connection_string, schema_name).await?,
+    ))
 }
 
 // If you want to add generator, you need to add input parameter
