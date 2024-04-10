@@ -1,12 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::SqlantError;
 
 use super::sql_entities::{
     ColumnConstraints, ForeignKey, SqlERData, SqlERDataLoader, SqlEnums, Table, TableColumn,
 };
-use postgres::{Client, NoTls};
+use tokio_postgres::{Client, NoTls};
 
 static GET_TABLES_LIST_QUERY: &str = r#"
 SELECT trim(both '"' from table_name) as table_name
@@ -102,11 +102,18 @@ pub struct PostgreSqlERDLoader {
 }
 
 impl PostgreSqlERDLoader {
-    pub fn new(
+    pub async fn new(
         connection_string: &str,
         schema_name: String,
     ) -> Result<PostgreSqlERDLoader, SqlantError> {
-        let client = Client::connect(connection_string, NoTls)?;
+        let (client, connection) = tokio_postgres::connect(connection_string, NoTls).await?;
+        // The connection object performs the actual communication with the database,
+        // so spawn it off to run on its own.
+        tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                eprintln!("connection error: {}", e);
+            }
+        });
         Ok(PostgreSqlERDLoader {
             client,
             schema_name,
@@ -116,31 +123,31 @@ impl PostgreSqlERDLoader {
     }
 
     /// Return empty vector if no FKs
-    fn get_fks(&self, tbls: &Vec<Rc<Table>>) -> Vec<ForeignKey> {
+    fn get_fks(&self, tbls: &Vec<Arc<Table>>) -> Vec<ForeignKey> {
         let mut res = vec![];
         for tbl in tbls {
             if let Some(fks) = self.fks.get(&tbl.name) {
                 for fk in fks {
-                    let source_table = Rc::clone(tbl);
+                    let source_table = Arc::clone(tbl);
 
-                    let source_columns: Vec<Rc<TableColumn>> = source_table
+                    let source_columns: Vec<Arc<TableColumn>> = source_table
                         .columns
                         .iter()
                         .filter(|&col| fk.source_columns_num.contains(&col.col_num))
-                        .map(Rc::clone)
+                        .map(Arc::clone)
                         .collect();
 
-                    let target_table = Rc::clone(
+                    let target_table = Arc::clone(
                         tbls.iter()
                             .find(|&tbl| tbl.name == fk.target_table_name)
                             .unwrap(),
                     );
 
-                    let target_columns: Vec<Rc<TableColumn>> = target_table
+                    let target_columns: Vec<Arc<TableColumn>> = target_table
                         .columns
                         .iter()
                         .filter(|&col| fk.target_columns_num.contains(&col.col_num))
-                        .map(Rc::clone)
+                        .map(Arc::clone)
                         .collect();
 
                     res.push(ForeignKey::new(
@@ -155,8 +162,8 @@ impl PostgreSqlERDLoader {
         res
     }
 
-    fn load_tables(&mut self, table_names: Vec<String>) -> (Vec<Rc<Table>>, SqlEnums) {
-        let mut columns: BTreeMap<String, Vec<Rc<TableColumn>>> = BTreeMap::new();
+    async fn load_tables(&mut self, table_names: Vec<String>) -> (Vec<Arc<Table>>, SqlEnums) {
+        let mut columns: BTreeMap<String, Vec<Arc<TableColumn>>> = BTreeMap::new();
         // If current database has enum types we load it here
         let mut enums: SqlEnums = BTreeMap::new();
         for tbl_name in &table_names {
@@ -166,6 +173,7 @@ impl PostgreSqlERDLoader {
         let rows = self
             .client
             .query(GET_COLUMNS_BASIC_INFO_QUERY, &[&table_names])
+            .await
             .unwrap();
         for row in rows {
             // I don't know how to get rid this
@@ -186,6 +194,7 @@ impl PostgreSqlERDLoader {
                 let enum_values = self
                     .client
                     .query(GET_ENUM_VALUES, &[&column_type_oid])
+                    .await
                     .unwrap();
 
                 let vals: Vec<String> = enum_values.iter().map(|v| v.get("enumlabel")).collect();
@@ -200,18 +209,18 @@ impl PostgreSqlERDLoader {
             columns
                 .get_mut(tbl_name)
                 .unwrap()
-                .push(Rc::new(TableColumn {
+                .push(Arc::new(TableColumn {
                     name: col_name.to_string(),
                     col_num,
                     datatype: col_type.to_string(),
                     constraints,
                 }));
         }
-        // Transform BTreeMap<String, Vec<Rc<TableColumn>>> into Vec<Table>
+        // Transform BTreeMap<String, Vec<Arc<TableColumn>>> into Vec<Table>
         (
             columns
                 .iter()
-                .map(|(k, v)| Rc::new(Table::new(k.to_string(), v.to_vec())))
+                .map(|(k, v)| Arc::new(Table::new(k.to_string(), v.to_vec())))
                 .collect(),
             enums,
         )
@@ -258,10 +267,11 @@ impl PostgreSqlERDLoader {
         res
     }
 
-    fn load_pks(&mut self) {
+    async fn load_pks(&mut self) {
         for row in self
             .client
             .query(GET_PKS_QUERY, &[&self.schema_name])
+            .await
             .unwrap()
         {
             self.pks
@@ -269,10 +279,11 @@ impl PostgreSqlERDLoader {
         }
     }
 
-    fn load_fks(&mut self) {
+    async fn load_fks(&mut self) {
         let rows = self
             .client
             .query(GET_FOREIGN_KEYS_QUERY, &[&self.schema_name])
+            .await
             .unwrap();
         for row in rows {
             let source_table_name: String = row.get("source_table_name");
@@ -296,13 +307,14 @@ impl PostgreSqlERDLoader {
         }
     }
 
-    fn check_is_schema_exists(&mut self) {
+    async fn check_is_schema_exists(&mut self) {
         let res = self
             .client
             .query(
                 "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)",
                 &[&self.schema_name],
             )
+            .await
             .unwrap();
         let row = res.first().unwrap();
         let exists: bool = row.get("exists");
@@ -312,24 +324,27 @@ impl PostgreSqlERDLoader {
     }
 }
 
+#[async_trait::async_trait]
 impl SqlERDataLoader for PostgreSqlERDLoader {
-    fn load_erd_data(&mut self) -> SqlERData {
+    async fn load_erd_data(&mut self) -> SqlERData {
         // I use it to avoid adding schema prefixes in SQL queries
         self.client
             .query(&format!("SET search_path TO {}", self.schema_name), &[])
+            .await
             .unwrap();
 
-        self.check_is_schema_exists();
+        self.check_is_schema_exists().await;
 
-        self.load_pks();
-        self.load_fks();
+        self.load_pks().await;
+        self.load_fks().await;
 
         let res = &self
             .client
             .query(GET_TABLES_LIST_QUERY, &[&self.schema_name])
+            .await
             .unwrap();
         let table_names: Vec<String> = res.iter().map(|row| row.get("table_name")).collect();
-        let (tables, enums) = self.load_tables(table_names);
+        let (tables, enums) = self.load_tables(table_names).await;
         let foreign_keys = self.get_fks(&tables);
 
         SqlERData {

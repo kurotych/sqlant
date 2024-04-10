@@ -4,15 +4,17 @@ use std::{collections::BTreeMap, env};
 mod utils;
 use crate::utils::check_fk;
 
-fn load_erd() -> SqlERData {
+async fn load_erd() -> SqlERData {
     let con_string = env::var("CON_STRING").unwrap();
-    let mut parser = lookup_parser(&con_string, "test_schema".to_string()).unwrap();
-    parser.load_erd_data()
+    let mut parser = lookup_parser(&con_string, "test_schema".to_string())
+        .await
+        .unwrap();
+    parser.load_erd_data().await
 }
 
-#[test]
-fn custom_schema_columns() {
-    let sql_er_data: SqlERData = load_erd();
+#[tokio::test]
+async fn custom_schema_columns() {
+    let sql_er_data: SqlERData = load_erd().await;
     let tables = BTreeMap::from([
         (
             "customers",
@@ -52,9 +54,9 @@ fn custom_schema_columns() {
     }
 }
 
-#[test]
-fn custom_schema_fks() {
-    let sql_er_data: SqlERData = load_erd();
+#[tokio::test]
+async fn custom_schema_fks() {
+    let sql_er_data: SqlERData = load_erd().await;
     check_fk(
         &sql_er_data,
         "orders",
@@ -63,9 +65,10 @@ fn custom_schema_fks() {
         vec!["customer_id"],
     );
 }
-#[test]
-fn tables_data() {
-    let sql_er_data: SqlERData = load_erd();
+
+#[tokio::test]
+async fn tables_data() {
+    let sql_er_data: SqlERData = load_erd().await;
     assert_eq!(sql_er_data.tables.len(), 2);
     assert_eq!(sql_er_data.foreign_keys.len(), 1);
 }
