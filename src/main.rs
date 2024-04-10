@@ -53,17 +53,19 @@ async fn main() {
     )
     .await
     .unwrap();
-    let erd = s.load_erd_data().await;
+    let erd = s.load_erd_data().await.unwrap();
     let output_arg = get_arg(&args, "output");
     let generator_type =
         GeneratorType::from_str(&output_arg).expect("Generator type {output_arg} isn't supported");
-    let rndr = get_generator(generator_type);
-    let result = rndr.generate(
-        erd,
-        &GeneratorConfigOptions {
-            not_null: args.get_flag("not_null"),
-            draw_enums: args.get_flag("enums"),
-        },
-    );
+    let rndr = get_generator(generator_type).unwrap();
+    let result = rndr
+        .generate(
+            erd,
+            &GeneratorConfigOptions {
+                not_null: args.get_flag("not_null"),
+                draw_enums: args.get_flag("enums"),
+            },
+        )
+        .unwrap();
     println!("{result}")
 }

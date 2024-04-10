@@ -326,7 +326,7 @@ impl PostgreSqlERDLoader {
 
 #[async_trait::async_trait]
 impl SqlERDataLoader for PostgreSqlERDLoader {
-    async fn load_erd_data(&mut self) -> SqlERData {
+    async fn load_erd_data(&mut self) -> Result<SqlERData, crate::SqlantError> {
         // I use it to avoid adding schema prefixes in SQL queries
         self.client
             .query(&format!("SET search_path TO {}", self.schema_name), &[])
@@ -347,10 +347,10 @@ impl SqlERDataLoader for PostgreSqlERDLoader {
         let (tables, enums) = self.load_tables(table_names).await;
         let foreign_keys = self.get_fks(&tables);
 
-        SqlERData {
+        Ok(SqlERData {
             tables,
             foreign_keys,
             enums,
-        }
+        })
     }
 }

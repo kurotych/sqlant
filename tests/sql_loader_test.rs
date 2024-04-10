@@ -9,7 +9,7 @@ async fn load_erd() -> SqlERData {
     let mut parser = lookup_parser(&con_string, "public".to_string())
         .await
         .unwrap();
-    parser.load_erd_data().await
+    parser.load_erd_data().await.unwrap()
 }
 
 #[tokio::test]
