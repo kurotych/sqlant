@@ -1,5 +1,7 @@
+use std::str::FromStr;
+
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use sqlant::{get_generator, lookup_parser, GeneratorConfigOptions};
+use sqlant::{get_generator, lookup_parser, GeneratorConfigOptions, GeneratorType};
 
 fn get_arg(args: &ArgMatches, arg_name: &str) -> String {
     args.get_one::<String>(arg_name).unwrap().to_string()
@@ -52,7 +54,10 @@ async fn main() {
     .await
     .unwrap();
     let erd = s.load_erd_data().await;
-    let rndr = get_generator(&get_arg(&args, "output"));
+    let output_arg = get_arg(&args, "output");
+    let generator_type =
+        GeneratorType::from_str(&output_arg).expect("Generator type {output_arg} isn't supported");
+    let rndr = get_generator(generator_type);
     let result = rndr.generate(
         erd,
         &GeneratorConfigOptions {

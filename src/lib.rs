@@ -1,3 +1,5 @@
+use strum_macros::{Display, EnumString};
+
 pub mod error;
 pub mod mermaid_generator;
 pub mod plantuml_generator;
@@ -28,13 +30,19 @@ pub async fn lookup_parser(
     ))
 }
 
+#[derive(Clone, Debug, Display, EnumString, Eq, PartialEq, PartialOrd, Ord)]
+#[strum(serialize_all = "lowercase")]
+pub enum GeneratorType {
+    PlantUML,
+    Mermaid,
+}
+
 // If you want to add generator, you need to add input parameter
 // for this function.
 // To distinguish what exactly generator you need.
-pub fn get_generator(generator_type: &str) -> Box<dyn ViewGenerator> {
+pub fn get_generator(generator_type: GeneratorType) -> Box<dyn ViewGenerator> {
     match generator_type {
-        "plantuml" => Box::new(PlantUmlDefaultGenerator::new()),
-        "mermaid" => Box::new(MermaidGenerator::new()),
-        _ => panic!("Generator type {generator_type} isn't supported"),
+        GeneratorType::PlantUML => Box::new(PlantUmlDefaultGenerator::new()),
+        GeneratorType::Mermaid => Box::new(MermaidGenerator::new()),
     }
 }
