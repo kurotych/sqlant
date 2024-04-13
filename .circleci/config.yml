@@ -16,10 +16,10 @@ jobs:
       - checkout
       - run: sudo apt update
       - run: sudo apt install -y postgresql-client
-      # - run: cargo fmt --check
+      - run: cargo fmt --check
       - run: psql -d $TEST_DATABASE_URL -f ./tests/test_db.sql
       - run: psql -d $TEST_DATABASE_URL -f ./tests/test_schema.sql
-      # - run: CON_STRING=$TEST_DATABASE_URL cargo test
+      - run: CON_STRING=$TEST_DATABASE_URL cargo test
       - run: cargo build --release
 
       - run: ./target/release/sqlant $TEST_DATABASE_URL > result.puml
@@ -37,11 +37,23 @@ jobs:
       - run: ./target/release/sqlant $TEST_DATABASE_URL -s test_schema > result.puml
       - run: curl --fail -X POST http://localhost:8080/png --data-binary @result.puml -o test.png
 
-      # - run: sudo npm install -g puppeteer mermaid @mermaid-js/mermaid-cli
+        # Mermaid
       - run: npm install -g @mermaid-js/mermaid-cli
       - run: sudo apt install chromium-bsu libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1
 
       - run: ./target/release/sqlant $TEST_DATABASE_URL -o mermaid > input.mmd
+      - run: mmdc -i input.mmd -o output.png
+
+      - run: ./target/release/sqlant $TEST_DATABASE_URL --nn -o mermaid > input.mmd
+      - run: mmdc -i input.mmd -o output.png
+
+      - run: ./target/release/sqlant $TEST_DATABASE_URL --en -o mermaid > input.mmd
+      - run: mmdc -i input.mmd -o output.png
+
+      - run: ./target/release/sqlant $TEST_DATABASE_URL -n -e -o mermaid > input.mmd
+      - run: mmdc -i input.mmd -o output.png
+
+      - run: ./target/release/sqlant $TEST_DATABASE_URL -s test_schema -o mermaid > input.mmd
       - run: mmdc -i input.mmd -o output.png
 
     resource_class: small
