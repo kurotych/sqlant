@@ -39,7 +39,7 @@ jobs:
 
       # - run: sudo npm install -g puppeteer mermaid @mermaid-js/mermaid-cli
       - run: npm install -g @mermaid-js/mermaid-cli
-      - run: sudo apt install chromium-bsu
+      - run: sudo apt install chromium-bsu libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1
 
       - run: ./target/release/sqlant $TEST_DATABASE_URL -o mermaid > input.mmd
       - run: mmdc -i input.mmd -o output.png
