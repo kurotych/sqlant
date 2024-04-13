@@ -152,9 +152,8 @@ impl<'a> ViewGenerator for MermaidGenerator<'a> {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(tbl, opts))
-            .collect::<Result<Vec<String>, crate::SqlantError>>()?;
-
+            .map(|tbl| self.entity_render(tbl, opts).unwrap())
+            .collect();
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys
             .iter()
