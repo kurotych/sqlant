@@ -37,8 +37,9 @@ jobs:
       - run: ./target/release/sqlant $TEST_DATABASE_URL -s test_schema > result.puml
       - run: curl --fail -X POST http://localhost:8080/png --data-binary @result.puml -o test.png
 
-      - run: sudo npm install -g @mermaid-js/mermaid-cli
-      - run: sudo npm install -g puppeteer
+      # - run: sudo npm install -g puppeteer mermaid @mermaid-js/mermaid-cli
+      - run: npm install -g @mermaid-js/mermaid-cli
+      - run: sudo apt install chromium-bsu
 
       - run: ./target/release/sqlant $TEST_DATABASE_URL -o mermaid > input.mmd
       - run: mmdc -i input.mmd -o output.png
