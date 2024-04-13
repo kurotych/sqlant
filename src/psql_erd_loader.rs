@@ -123,7 +123,7 @@ impl PostgreSqlERDLoader {
     }
 
     /// Return empty vector if no FKs
-    fn get_fks(&self, tbls: &Vec<Arc<Table>>) -> Vec<ForeignKey> {
+    fn get_fks(&self, tbls: &Vec<Arc<Table>>) -> Result<Vec<ForeignKey>, crate::SqlantError> {
         let mut res = vec![];
         for tbl in tbls {
             if let Some(fks) = self.fks.get(&tbl.name) {
@@ -140,7 +140,9 @@ impl PostgreSqlERDLoader {
                     let target_table = Arc::clone(
                         tbls.iter()
                             .find(|&tbl| tbl.name == fk.target_table_name)
-                            .unwrap(),
+                            .ok_or(SqlantError::PsqlErdLoader(
+                                "Target table is not found".to_string(),
+                            ))?,
                     );
 
                     let target_columns: Vec<Arc<TableColumn>> = target_table
@@ -159,10 +161,13 @@ impl PostgreSqlERDLoader {
                 }
             }
         }
-        res
+        Ok(res)
     }
 
-    async fn load_tables(&mut self, table_names: Vec<String>) -> (Vec<Arc<Table>>, SqlEnums) {
+    async fn load_tables(
+        &mut self,
+        table_names: Vec<String>,
+    ) -> Result<(Vec<Arc<Table>>, SqlEnums), crate::SqlantError> {
         let mut columns: BTreeMap<String, Vec<Arc<TableColumn>>> = BTreeMap::new();
         // If current database has enum types we load it here
         let mut enums: SqlEnums = BTreeMap::new();
@@ -173,8 +178,7 @@ impl PostgreSqlERDLoader {
         let rows = self
             .client
             .query(GET_COLUMNS_BASIC_INFO_QUERY, &[&table_names])
-            .await
-            .unwrap();
+            .await?;
         for row in rows {
             // I don't know how to get rid this
             let col_num: i16 = row.get("col_num");
@@ -184,18 +188,21 @@ impl PostgreSqlERDLoader {
             let col_type: &str = row.get("datatype");
 
             let typ_type: i8 = row.get("typtype");
-            let tt: Result<u32, _> = typ_type.try_into();
-            // enum handler
-            if tt.is_ok()
-                && char::from_u32(tt.unwrap()).unwrap() == 'e'
-                && !enums.contains_key(col_type)
-            {
+            let tt: u32 = typ_type
+                .try_into()
+                .map_err(|e: <u32 as TryFrom<i32>>::Error| {
+                    crate::SqlantError::PsqlErdLoader(e.to_string())
+                })?;
+            let ttc: char = tt.try_into().map_err(|e: <char as TryFrom<u32>>::Error| {
+                crate::SqlantError::PsqlErdLoader(e.to_string())
+            })?;
+
+            if ttc == 'e' && !enums.contains_key(col_type) {
                 let column_type_oid: u32 = row.get("column_type_oid");
                 let enum_values = self
                     .client
                     .query(GET_ENUM_VALUES, &[&column_type_oid])
-                    .await
-                    .unwrap();
+                    .await?;
 
                 let vals: Vec<String> = enum_values.iter().map(|v| v.get("enumlabel")).collect();
                 enums.insert(col_type.to_string(), vals);
@@ -208,7 +215,9 @@ impl PostgreSqlERDLoader {
 
             columns
                 .get_mut(tbl_name)
-                .unwrap()
+                .ok_or(SqlantError::PsqlErdLoader(
+                    "Failed to get mut columns".to_string(),
+                ))?
                 .push(Arc::new(TableColumn {
                     name: col_name.to_string(),
                     col_num,
@@ -217,13 +226,13 @@ impl PostgreSqlERDLoader {
                 }));
         }
         // Transform BTreeMap<String, Vec<Arc<TableColumn>>> into Vec<Table>
-        (
+        Ok((
             columns
                 .iter()
                 .map(|(k, v)| Arc::new(Table::new(k.to_string(), v.to_vec())))
                 .collect(),
             enums,
-        )
+        ))
     }
 
     fn is_fk(&mut self, table_name: &str, table_column: i16) -> bool {
@@ -267,24 +276,23 @@ impl PostgreSqlERDLoader {
         res
     }
 
-    async fn load_pks(&mut self) {
+    async fn load_pks(&mut self) -> Result<(), SqlantError> {
         for row in self
             .client
             .query(GET_PKS_QUERY, &[&self.schema_name])
-            .await
-            .unwrap()
+            .await?
         {
             self.pks
                 .insert(row.get("table_name"), row.get("pk_columns_nums"));
         }
+        Ok(())
     }
 
-    async fn load_fks(&mut self) {
+    async fn load_fks(&mut self) -> Result<(), SqlantError> {
         let rows = self
             .client
             .query(GET_FOREIGN_KEYS_QUERY, &[&self.schema_name])
-            .await
-            .unwrap();
+            .await?;
         for row in rows {
             let source_table_name: String = row.get("source_table_name");
             let target_table_name: String = row.get("target_table_name");
@@ -305,22 +313,27 @@ impl PostgreSqlERDLoader {
                 self.fks.insert(source_table_name, hs);
             }
         }
+        Ok(())
     }
 
-    async fn check_is_schema_exists(&mut self) {
+    async fn check_is_schema_exists(&mut self) -> Result<(), SqlantError> {
         let res = self
             .client
             .query(
                 "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)",
                 &[&self.schema_name],
             )
-            .await
-            .unwrap();
-        let row = res.first().unwrap();
+            .await?;
+        let row = res.first().ok_or(SqlantError::PsqlErdLoader(
+            "check_is_schema_exists query doesn't return any row".to_string(),
+        ))?;
         let exists: bool = row.get("exists");
         if !exists {
-            panic!("Schema doesn't exist");
+            return Err(SqlantError::PsqlErdLoader(
+                "Schema doesn't exist".to_string(),
+            ));
         }
+        Ok(())
     }
 }
 
@@ -330,22 +343,20 @@ impl SqlERDataLoader for PostgreSqlERDLoader {
         // I use it to avoid adding schema prefixes in SQL queries
         self.client
             .query(&format!("SET search_path TO {}", self.schema_name), &[])
-            .await
-            .unwrap();
+            .await?;
 
-        self.check_is_schema_exists().await;
+        self.check_is_schema_exists().await?;
 
-        self.load_pks().await;
-        self.load_fks().await;
+        self.load_pks().await?;
+        self.load_fks().await?;
 
         let res = &self
             .client
             .query(GET_TABLES_LIST_QUERY, &[&self.schema_name])
-            .await
-            .unwrap();
+            .await?;
         let table_names: Vec<String> = res.iter().map(|row| row.get("table_name")).collect();
-        let (tables, enums) = self.load_tables(table_names).await;
-        let foreign_keys = self.get_fks(&tables);
+        let (tables, enums) = self.load_tables(table_names).await?;
+        let foreign_keys = self.get_fks(&tables)?;
 
         Ok(SqlERData {
             tables,
