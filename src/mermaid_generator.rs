@@ -79,23 +79,18 @@ impl<'a> MermaidGenerator<'a> {
         tbl: &Table,
         opts: &GeneratorConfigOptions,
     ) -> Result<String, crate::SqlantError> {
-        // if pk_render - render only pk columns
-        // if fk_render - render only pure FK columns (Non PK)
-        // if both are false return non pk and non fk
-        let columns_render = |pk_render: bool, fk_render: bool| {
+        enum RenderType {
+            PK,     // only pk columns
+            FK,     // only pure FK columns (Non PK)
+            Others, // non pk and non fk
+        }
+        let columns_render = |rt: RenderType| {
             tbl.columns
                 .iter()
-                .filter(|col| {
-                    if pk_render {
-                        return col.is_pk();
-                    } // otherwise render non pk columns
-                    if fk_render {
-                        return !col.is_pk() && col.is_fk();
-                    }
-                    if !pk_render && !fk_render {
-                        return !col.is_pk() && !col.is_fk();
-                    }
-                    panic!("Aaa! Something went wrong!");
+                .filter(|col| match rt {
+                    RenderType::PK => col.is_pk(),
+                    RenderType::FK => !col.is_pk() && col.is_fk(),
+                    RenderType::Others => !col.is_pk() && !col.is_fk(),
                 })
                 .try_fold(String::new(), |acc, col| {
                     let column = &SColumn {
@@ -120,9 +115,9 @@ impl<'a> MermaidGenerator<'a> {
         Ok(self.str_templates.render(
             "ent",
             &SEntity {
-                pks: columns_render(true, false)?,
-                fks: columns_render(false, true)?,
-                others: columns_render(false, false)?,
+                pks: columns_render(RenderType::PK)?,
+                fks: columns_render(RenderType::FK)?,
+                others: columns_render(RenderType::Others)?,
                 name: tbl.name.clone(),
             },
         )?)
