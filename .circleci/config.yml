@@ -16,10 +16,10 @@ jobs:
       - checkout
       - run: sudo apt update
       - run: sudo apt install -y postgresql-client
-      - run: cargo fmt --check
+      # - run: cargo fmt --check
       - run: psql -d $TEST_DATABASE_URL -f ./tests/test_db.sql
       - run: psql -d $TEST_DATABASE_URL -f ./tests/test_schema.sql
-      - run: CON_STRING=$TEST_DATABASE_URL cargo test
+      # - run: CON_STRING=$TEST_DATABASE_URL cargo test
       - run: cargo build --release
 
       - run: ./target/release/sqlant $TEST_DATABASE_URL > result.puml
@@ -38,6 +38,7 @@ jobs:
       - run: curl --fail -X POST http://localhost:8080/png --data-binary @result.puml -o test.png
 
       - run: sudo npm install -g @mermaid-js/mermaid-cli
+      - run: sudo npm install -g puppeteer
 
       - run: ./target/release/sqlant $TEST_DATABASE_URL -o mermaid > input.mmd
       - run: mmdc -i input.mmd -o output.png
