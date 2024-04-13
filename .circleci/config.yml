@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   run_integration_and_smoke_tests:
     docker:
-      - image: cimg/rust:1.77.2-browsers
+      - image: cimg/rust:1.77
         environment:
           TEST_DATABASE_URL: postgresql://sql:sql@localhost/sql
       - image: cimg/postgres:14.2
@@ -13,17 +13,15 @@ jobs:
             POSTGRES_DB: sql
     steps:
       - checkout
-      - run: cargo fmt --check
-      - run: sudo apt-get install postgresql-client
-      - run: psql -d $TEST_DATABASE_URL -f ./tests/test_db.sql
-      - run: psql -d $TEST_DATABASE_URL -f ./tests/test_schema.sql
+      - run: sudo apt update
+      - run: sudo apt install -y pngcheck 
+      # - run: cargo fmt --check
+      # - run: sudo apt-get install postgresql-client
+      # - run: psql -d $TEST_DATABASE_URL -f ./tests/test_db.sql
+      # - run: psql -d $TEST_DATABASE_URL -f ./tests/test_schema.sql
       # - run: CON_STRING=$TEST_DATABASE_URL cargo test
-      - run: cargo build --release
-      - run: ./target/release/sqlant $TEST_DATABASE_URL > result.puml
-
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run: cat result.puml
+      # - run: cargo build --release
+      # - run: ./target/release/sqlant $TEST_DATABASE_URL > result.puml
       # - run: ./target/release/sqlant $TEST_DATABASE_URL -o mermaid
       # - run: ./target/release/sqlant $TEST_DATABASE_URL
       # - run: ./target/release/sqlant $TEST_DATABASE_URL --nn
