@@ -79,25 +79,20 @@ impl<'a> MermaidGenerator<'a> {
         tbl: &Table,
         opts: &GeneratorConfigOptions,
     ) -> Result<String, crate::SqlantError> {
-        // if pk_render - render only pk columns
-        // if fk_render - render only pure FK columns (Non PK)
-        // if both are false return non pk and non fk
-        let columns_render = |pk_render: bool, fk_render: bool| {
+        enum RenderType {
+            PK,     // only pk columns
+            FK,     // only pure FK columns (Non PK)
+            Others, // non pk and non fk
+        }
+        let columns_render = |rt: RenderType| {
             tbl.columns
                 .iter()
-                .filter(|col| {
-                    if pk_render {
-                        return col.is_pk();
-                    } // otherwise render non pk columns
-                    if fk_render {
-                        return !col.is_pk() && col.is_fk();
-                    }
-                    if !pk_render && !fk_render {
-                        return !col.is_pk() && !col.is_fk();
-                    }
-                    panic!("Aaa! Something went wrong!");
+                .filter(|col| match rt {
+                    RenderType::PK => col.is_pk(),
+                    RenderType::FK => !col.is_pk() && col.is_fk(),
+                    RenderType::Others => !col.is_pk() && !col.is_fk(),
                 })
-                .fold(String::new(), |acc, col| {
+                .try_fold(String::new(), |acc, col| {
                     let column = &SColumn {
                         col: col.as_ref(),
                         is_fk: col.is_fk(),
@@ -107,23 +102,22 @@ impl<'a> MermaidGenerator<'a> {
                     };
                     let mut res: String = self
                         .str_templates
-                        .render("column", &column)
-                        .unwrap()
+                        .render("column", &column)?
                         .trim_end_matches(|c| c == ',')
                         .into();
                     if column.is_nn {
                         res += " \"NN\"";
                     }
 
-                    acc + &res + "\n"
+                    Ok::<std::string::String, crate::SqlantError>(acc + &res + "\n")
                 })
         };
         Ok(self.str_templates.render(
             "ent",
             &SEntity {
-                pks: columns_render(true, false),
-                fks: columns_render(false, true),
-                others: columns_render(false, false),
+                pks: columns_render(RenderType::PK)?,
+                fks: columns_render(RenderType::FK)?,
+                others: columns_render(RenderType::Others)?,
                 name: tbl.name.clone(),
             },
         )?)
@@ -152,41 +146,37 @@ impl<'a> ViewGenerator for MermaidGenerator<'a> {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(tbl, opts).unwrap())
-            .collect();
+            .map(|tbl| self.entity_render(tbl, opts))
+            .collect::<Result<Vec<String>, crate::SqlantError>>()?;
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys
             .iter()
             .map(|fk| {
-                self.str_templates
-                    .render(
-                        "rel",
-                        &SForeignKey {
-                            source_table_name: fk.source_table.name.clone(),
-                            target_table_name: fk.target_table.name.clone(),
-                            is_zero_one_to_one: fk.is_zero_one_to_one,
-                        },
-                    )
-                    .unwrap()
+                self.str_templates.render(
+                    "rel",
+                    &SForeignKey {
+                        source_table_name: fk.source_table.name.clone(),
+                        target_table_name: fk.target_table.name.clone(),
+                        is_zero_one_to_one: fk.is_zero_one_to_one,
+                    },
+                )
             })
-            .collect();
+            .collect::<Result<Vec<String>, _>>()?;
 
         let enums: Vec<String> = if opts.draw_enums {
             sql_erd
                 .enums
                 .iter()
                 .map(|(name, values)| {
-                    self.str_templates
-                        .render(
-                            "enum",
-                            &SEnum {
-                                name: name.to_string(),
-                                values: values.to_vec(),
-                            },
-                        )
-                        .unwrap()
+                    self.str_templates.render(
+                        "enum",
+                        &SEnum {
+                            name: name.to_string(),
+                            values: values.to_vec(),
+                        },
+                    )
                 })
-                .collect()
+                .collect::<Result<Vec<String>, _>>()?
         } else {
             vec![]
         };
