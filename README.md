@@ -4,6 +4,10 @@ Generate PlantUML/Mermaid ER diagram textual description from SQL connection str
 **Inspired by [planter](https://github.com/achiku/planter)**  
 ##### **Currently, supports only PostgreSQL NoTls connection**
 
+## You can try my REST API
+Generate **mermaid**/**plantuml** diagram in **png**/**pdf**/**svg**/text format based on your SQL DDL.  
+https://rapidapi.com/akurotych/api/sqlant-service2
+
 ## Why created
 I like the [idea of planter](https://github.com/achiku/planter#why-created) and I use it in 
 internal confluence documentation with PlantUML plugin for my projects.  
