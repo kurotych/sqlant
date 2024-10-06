@@ -13,6 +13,7 @@ async fn main() {
         .about(
             "Generate Entity Relationship diagram textual description from SQL connection string",
         )
+        .version(env!("CARGO_PKG_VERSION"))
         .arg(Arg::new("connection_string").required(true))
         .arg(
             Arg::new("not_null")
