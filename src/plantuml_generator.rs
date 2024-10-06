@@ -34,11 +34,6 @@ struct SSqlEnum {
 }
 
 #[derive(Serialize)]
-struct Entities {
-    entities: Vec<String>,
-}
-
-#[derive(Serialize)]
 struct SColumn<'a> {
     col: &'a TableColumn,
     is_fk: bool,
