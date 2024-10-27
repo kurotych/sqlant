@@ -16,6 +16,12 @@ async fn main() {
         .version(env!("CARGO_PKG_VERSION"))
         .arg(Arg::new("connection_string").required(true))
         .arg(
+            Arg::new("legend")
+                .long("legend")
+                .help("Add legend to diagram (supported only for PlantUML)")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             Arg::new("not_null")
                 .short('n')
                 .long("nn")
@@ -65,6 +71,7 @@ async fn main() {
             &GeneratorConfigOptions {
                 not_null: args.get_flag("not_null"),
                 draw_enums: args.get_flag("enums"),
+                draw_legend: args.get_flag("legend"),
             },
         )
         .unwrap();
