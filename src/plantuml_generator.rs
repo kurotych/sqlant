@@ -12,20 +12,27 @@ static PUML_TEMPLATE: &str = "@startuml\n\n\
     skinparam linetype ortho\n\n\
     {{ for ent in entities}}{ent}\n{{ endfor }}\n\
     {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
-    {{ for e in enums}}{e}\n{{ endfor }}@enduml\n";
+    {{ for e in enums}}{e}\n{{ endfor }}{legend}@enduml\n";
 
 static ENTITY_TEMPLATE: &str = "entity \"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
 
 static COLUMN_TEMPLATE: &str =
-    "{{ if is_pk }}#{{else}}*{{ endif }} <b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" \
-        {{ if is_pk }}<b><color:goldenrod>(PK) </color></b>{{ endif }}{{ if is_fk }}<b><color:701fc6>(FK) </color></b>{{ endif }}\
-        {{ if is_nn }}<b><color:DarkRed>(NN) </color></b>{{ endif }} //\n";
+    "{{ if is_nn_and_not_pk }}*{{ endif }}{{ if is_pk }}<b><color:#d99d1c><&key></color>{{else}}{{ endif }}{{ if is_fk }}<color:#aaaaaa><&key></color>{{ endif }}<b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" //\n";
 
 static REL_TEMPLATE: &str =
     "\"**{source_table_name}**\" {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} \"**{target_table_name}**\"\n";
 
 static ENUM_TEMPLATE: &str =
     "object \"<color:BlueViolet>**{name}**</color> (enum)\" as {name} \\{\n{{ for v in values}} {v}\n{{ endfor }}}\n";
+
+static PUML_LEGEND: &str = r#"
+legend right
+ <#GhostWhite,#GhostWhite>|   |= __Legend__ |
+ |<b><color:#b8861b><&key></color></b>| Primary Key |
+ |<color:#aaaaaa><&key></color>| Foreign Key |
+ | &#8226; | Mandatory field (Not Null) |
+endlegend
+"#;
 
 #[derive(Serialize)]
 struct SSqlEnum {
@@ -39,6 +46,7 @@ struct SColumn<'a> {
     is_fk: bool,
     is_pk: bool,
     is_nn: bool,
+    is_nn_and_not_pk: bool,
 }
 
 #[derive(Serialize)]
@@ -50,10 +58,14 @@ struct SEntity {
 }
 
 #[derive(Serialize)]
+struct SLegend(String);
+
+#[derive(Serialize)]
 struct SPuml {
     entities: Vec<String>,
     foreign_keys: Vec<String>,
     enums: Vec<String>,
+    legend: Option<SLegend>,
 }
 
 #[derive(Serialize)]
@@ -71,15 +83,12 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
         str_templates.add_template("ent", ENTITY_TEMPLATE)?;
         str_templates.add_template("rel", REL_TEMPLATE)?;
         str_templates.add_template("enum", ENUM_TEMPLATE)?;
+        str_templates.add_template("legend", PUML_LEGEND)?;
         str_templates.set_default_formatter(&format_unescaped);
         Ok(PlantUmlDefaultGenerator { str_templates })
     }
 
-    fn entity_render(
-        &self,
-        tbl: &Table,
-        opts: &GeneratorConfigOptions,
-    ) -> Result<String, crate::SqlantError> {
+    fn entity_render(&self, tbl: &Table) -> Result<String, crate::SqlantError> {
         enum RenderType {
             PK,     // only pk columns
             FK,     // only pure FK columns (Non PK)
@@ -101,7 +110,8 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
                                 col: col.as_ref(),
                                 is_fk: col.is_fk(),
                                 is_pk: col.is_pk(),
-                                is_nn: opts.not_null && col.is_nn(),
+                                is_nn: col.is_nn(),
+                                is_nn_and_not_pk: col.is_nn() && (!col.is_pk()),
                             },
                         );
                         match r {
@@ -132,7 +142,7 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(tbl, opts))
+            .map(|tbl| self.entity_render(tbl))
             .collect::<Result<Vec<String>, crate::SqlantError>>()?;
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys
@@ -167,12 +177,19 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
             vec![]
         };
 
+        let legend = if opts.draw_legend {
+            Some(SLegend(self.str_templates.render("legend", &())?))
+        } else {
+            None
+        };
+
         Ok(self.str_templates.render(
             "puml",
             &SPuml {
                 entities,
                 foreign_keys,
                 enums,
+                legend,
             },
         )?)
     }
