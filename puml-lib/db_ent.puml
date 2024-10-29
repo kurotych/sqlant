@@ -1,0 +1,19 @@
+!function column($name, $type, $pk=false, $fk=false, $nn=false)
+  !local $prefix = ""
+
+  !if ($pk == true)
+    !$prefix = "<color:#d99d1c><&key></color>"
+  !elseif($nn == true)
+    !$prefix = "*"
+  !endif
+
+  !if ($fk == true)
+    !$prefix = $prefix + "<color:#aaaaaa><&key></color>"
+  !endif
+
+!return $prefix + '<b>""' + $name + '""</b>' + ': ' + '//""' + $type + '"" //'
+!endfunction
+
+!function table($name)
+  !return 'entity "**' + $name + '**"'
+!endfunction
