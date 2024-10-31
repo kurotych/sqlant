@@ -17,3 +17,13 @@
 !function table($name)
   !return 'entity "**' + $name + '**"'
 !endfunction
+
+!procedure enum($name, $variants)
+  !$list = %splitstr($variants, ",")
+
+  object "**$name** <color:purple>**(E)**</color>" as $name {
+    !foreach $item in $list
+      $item
+    !endfor
+  }
+!endprocedure
