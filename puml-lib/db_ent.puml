@@ -27,3 +27,13 @@
     !endfor
   }
 !endprocedure
+
+!procedure add_legend()
+  legend right
+   <#GhostWhite,#GhostWhite>|   |= __Legend__ |
+   |<b><color:#b8861b><&key></color></b>| Primary Key |
+   |<color:#aaaaaa><&key></color>| Foreign Key |
+   | &#8226; | Mandatory field (Not Null) |
+   | <color:purple>**(E)**</color> | Enum |
+  endlegend
+!endprocedure
