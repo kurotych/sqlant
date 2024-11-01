@@ -15,7 +15,7 @@
 !endfunction
 
 !function table($name)
-  !return 'entity "**' + $name + '**"'
+  !return 'entity "**' + $name + '**"' + " as " + $name
 !endfunction
 
 !procedure enum($name, $variants)
