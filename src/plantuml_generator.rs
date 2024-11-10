@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::sql_entities::{SqlERData, Table, TableColumn};
 use crate::{GeneratorConfigOptions, ViewGenerator};
 use serde::Serialize;
@@ -14,7 +16,7 @@ static PUML_TEMPLATE: &str = "@startuml\n\n\
     {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
     {{ for e in enums}}{e}\n{{ endfor }}{legend}@enduml\n";
 
-static ENTITY_TEMPLATE: &str = "entity \"**{name}**\" \\{\n{pks}---\n{fks}{others}}\n";
+static ENTITY_TEMPLATE: &str = "entity \"**{name}**\" \\{\n{pks}---\n{fks}{nns}{others}}\n";
 
 static COLUMN_TEMPLATE: &str =
     "{{ if is_nn_and_not_pk }}*{{ endif }}{{ if is_pk }}<b><color:#d99d1c><&key></color>{{else}}{{ endif }}{{ if is_fk }}<color:#aaaaaa><&key></color>{{ endif }}<b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" //\n";
@@ -54,6 +56,7 @@ struct SEntity {
     name: String,
     pks: String,    // Columns that contain PK
     fks: String,    // Columns that contain FK and don't contain PK
+    nns: String,    // NOT NULL Columns that don't contain both PK and FK
     others: String, // Columns that don't contain both PK and FK
 }
 
@@ -75,6 +78,13 @@ struct SForeignKey {
     is_zero_one_to_one: bool,
 }
 
+struct SortedColumns {
+    pks: Vec<Arc<TableColumn>>,
+    fks: Vec<Arc<TableColumn>>,
+    nns: Vec<Arc<TableColumn>>,
+    others: Vec<Arc<TableColumn>>,
+}
+
 impl<'a> PlantUmlDefaultGenerator<'a> {
     pub fn new() -> Result<PlantUmlDefaultGenerator<'a>, crate::SqlantError> {
         let mut str_templates = TinyTemplate::new();
@@ -88,45 +98,85 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
         Ok(PlantUmlDefaultGenerator { str_templates })
     }
 
-    fn entity_render(&self, tbl: &Table) -> Result<String, crate::SqlantError> {
-        enum RenderType {
-            PK,     // only pk columns
-            FK,     // only pure FK columns (Non PK)
-            Others, // non pk and non fk
+    // Sorts columns in next order:
+    // 1. PKs
+    // 2. FKs
+    // 3. NN
+    // 4. Others
+    fn sort_columns(cols: &[Arc<TableColumn>]) -> SortedColumns {
+        let mut cloned_cols = cols.to_owned();
+        let mut pks = Vec::new();
+        let mut fks = Vec::new();
+        let mut nns = Vec::new();
+        let mut others = Vec::new();
+
+        cloned_cols.retain(|col| {
+            if col.is_pk() {
+                pks.push(Arc::clone(col));
+                false
+            } else {
+                true
+            }
+        });
+
+        cloned_cols.retain(|col| {
+            if col.is_fk() && !col.is_pk() {
+                fks.push(Arc::clone(col));
+                false
+            } else {
+                true
+            }
+        });
+
+        cloned_cols.retain(|col| {
+            if col.is_nn() && !col.is_pk() && !col.is_fk() {
+                nns.push(Arc::clone(col));
+                false
+            } else {
+                true
+            }
+        });
+
+        others.extend(cloned_cols);
+
+        SortedColumns {
+            pks,
+            fks,
+            nns,
+            others,
         }
-        let columns_render = |rt: RenderType| -> Result<String, _> {
-            Ok::<std::string::String, crate::SqlantError>(
-                tbl.columns
-                    .iter()
-                    .filter(|col| match rt {
-                        RenderType::PK => col.is_pk(),
-                        RenderType::FK => !col.is_pk() && col.is_fk(),
-                        RenderType::Others => !col.is_pk() && !col.is_fk(),
-                    })
-                    .try_fold(String::new(), |acc, col| {
-                        let r = self.str_templates.render(
-                            "pk",
-                            &SColumn {
-                                col: col.as_ref(),
-                                is_fk: col.is_fk(),
-                                is_pk: col.is_pk(),
-                                is_nn: col.is_nn(),
-                                is_nn_and_not_pk: col.is_nn() && (!col.is_pk()),
-                            },
-                        );
-                        match r {
-                            Ok(r) => Ok(acc + &r),
-                            Err(e) => Err(e),
-                        }
-                    })?,
-            )
+    }
+    fn entity_render(&self, tbl: &Table) -> Result<String, crate::SqlantError> {
+        let sorted_columns = Self::sort_columns(&tbl.columns);
+
+        let columns_render = |columns: Vec<Arc<TableColumn>>| -> Result<String, _> {
+            Ok::<std::string::String, crate::SqlantError>(columns.iter().try_fold(
+                String::new(),
+                |acc, col| {
+                    let r = self.str_templates.render(
+                        "pk",
+                        &SColumn {
+                            col: col.as_ref(),
+                            is_fk: col.is_fk(),
+                            is_pk: col.is_pk(),
+                            is_nn: col.is_nn(),
+                            is_nn_and_not_pk: col.is_nn() && (!col.is_pk()),
+                        },
+                    );
+                    match r {
+                        Ok(r) => Ok(acc + &r),
+                        Err(e) => Err(e),
+                    }
+                },
+            )?)
         };
         Ok(self.str_templates.render(
             "ent",
             &SEntity {
-                pks: columns_render(RenderType::PK)?,
-                fks: columns_render(RenderType::FK)?,
-                others: columns_render(RenderType::Others)?,
+                pks: columns_render(sorted_columns.pks)?,
+                fks: columns_render(sorted_columns.fks)?,
+                nns: columns_render(sorted_columns.nns)?,
+                others: columns_render(sorted_columns.others)?,
                 name: tbl.name.clone(),
             },
         )?)
