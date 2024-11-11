@@ -19,7 +19,7 @@ static PUML_TEMPLATE: &str = "@startuml\n\n\
 
 static ENTITY_TEMPLATE: &str = "table({name}) \\{\n{pks}  ---\n{fks}{nns}{others}}\n";
 
-static COLUMN_TEMPLATE: &str = "  column({col.name}, \"{col.datatype}\"{{ if is_pk }}, $pk=true{{ endif }}{{ if is_pk }}, $fk=true{{ endif }}{{if is_nn}}, $nn=true{{ endif }})\n";
+static COLUMN_TEMPLATE: &str = "  column({col.name}, \"{col.datatype}\"{{ if is_pk }}, $pk=true{{ endif }}{{ if is_fk }}, $fk=true{{ endif }}{{if is_nn}}, $nn=true{{ endif }})\n";
 
 static REL_TEMPLATE: &str =
     "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}\n";
