@@ -11,7 +11,7 @@
     !$prefix = $prefix + "<color:#aaaaaa><&key></color>"
   !endif
 
-!return $prefix + '<b>""' + $name + '""</b>' + ': ' + '//""' + $type + '"" //'
+  !return $prefix + '<b>""' + $name + '""</b>' + ': ' + '//""' + $type + '"" //'
 !endfunction
 
 !function table($name)
