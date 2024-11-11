@@ -12,29 +12,22 @@ pub struct PlantUmlDefaultGenerator<'a> {
 static PUML_TEMPLATE: &str = "@startuml\n\n\
     hide circle\n\
     skinparam linetype ortho\n\n\
+    {puml_lib}\n\n\
     {{ for ent in entities}}{ent}\n{{ endfor }}\n\
     {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
-    {{ for e in enums}}{e}\n{{ endfor }}{legend}@enduml\n";
+    {{ for e in enums}}{e}\n{{ endfor }}{legend}\n@enduml";
 
-static ENTITY_TEMPLATE: &str = "entity \"**{name}**\" \\{\n{pks}---\n{fks}{nns}{others}}\n";
+static ENTITY_TEMPLATE: &str = "table({name}) \\{\n{pks}  ---\n{fks}{nns}{others}}\n";
 
-static COLUMN_TEMPLATE: &str =
-    "{{ if is_nn_and_not_pk }}*{{ endif }}{{ if is_pk }}<b><color:#d99d1c><&key></color>{{else}}{{ endif }}{{ if is_fk }}<color:#aaaaaa><&key></color>{{ endif }}<b>\"\"{col.name}\"\"</b>: //\"\"{col.datatype}\"\" //\n";
+static COLUMN_TEMPLATE: &str = "  column({col.name}, \"{col.datatype}\"{{ if is_pk }}, $pk=true{{ endif }}{{ if is_pk }}, $fk=true{{ endif }}{{if is_nn}}, $nn=true{{ endif }})\n";
 
 static REL_TEMPLATE: &str =
-    "\"**{source_table_name}**\" {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} \"**{target_table_name}**\"\n";
+    "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}\n";
 
 static ENUM_TEMPLATE: &str =
-    "object \"<color:BlueViolet>**{name}**</color> (enum)\" as {name} \\{\n{{ for v in values}} {v}\n{{ endfor }}}\n";
+    "enum({name}, \"{{ for v in values}}{{if @last}}{v}{{else}}{v}, {{ endif }}{{ endfor }}\")\n";
 
-static PUML_LEGEND: &str = r#"
-legend right
- <#GhostWhite,#GhostWhite>|   |= __Legend__ |
- |<b><color:#b8861b><&key></color></b>| Primary Key |
- |<color:#aaaaaa><&key></color>| Foreign Key |
- | &#8226; | Mandatory field (Not Null) |
-endlegend
-"#;
+static PUML_LEGEND: &str = r#"add_legend()"#;
 
 #[derive(Serialize)]
 struct SSqlEnum {
@@ -65,6 +58,7 @@ struct SLegend(String);
 
 #[derive(Serialize)]
 struct SPuml {
+    puml_lib: String,
     entities: Vec<String>,
     foreign_keys: Vec<String>,
     enums: Vec<String>,
@@ -89,7 +83,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
     pub fn new() -> Result<PlantUmlDefaultGenerator<'a>, crate::SqlantError> {
         let mut str_templates = TinyTemplate::new();
         str_templates.add_template("puml", PUML_TEMPLATE)?;
-        str_templates.add_template("pk", COLUMN_TEMPLATE)?;
+        str_templates.add_template("column", COLUMN_TEMPLATE)?;
         str_templates.add_template("ent", ENTITY_TEMPLATE)?;
         str_templates.add_template("rel", REL_TEMPLATE)?;
         str_templates.add_template("enum", ENUM_TEMPLATE)?;
@@ -154,7 +148,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
                 String::new(),
                 |acc, col| {
                     let r = self.str_templates.render(
-                        "pk",
+                        "column",
                         &SColumn {
                             col: col.as_ref(),
                             is_fk: col.is_fk(),
@@ -233,9 +227,16 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
             None
         };
 
+        let puml_lib: String = if opts.inline_puml_lib {
+            PUML_LIB_INLINE.into()
+        } else {
+            PUML_LIB_INCLUDE.into()
+        };
+
         Ok(self.str_templates.render(
             "puml",
             &SPuml {
+                puml_lib,
                 entities,
                 foreign_keys,
                 enums,
@@ -244,3 +245,47 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
         )?)
     }
 }
+static PUML_LIB_INCLUDE: &str = "!include https://raw.githubusercontent.com/kurotych/sqlant/b2e5db9ed8659f281208a687a344b34ff38129cd/puml-lib/db_ent.puml";
+
+// https://raw.githubusercontent.com/kurotych/sqlant/0497c6594364e406d77dfdc0999e0b5e596b7d73/puml-lib/db_ent.puml
+static PUML_LIB_INLINE: &str = r#"
+!function column($name, $type, $pk=false, $fk=false, $nn=false)
+  !local $prefix = ""
+
+  !if ($pk == true)
+    !$prefix = "<color:#d99d1c><&key></color>"
+  !elseif($nn == true)
+    !$prefix = "*"
+  !endif
+
+  !if ($fk == true)
+    !$prefix = $prefix + "<color:#aaaaaa><&key></color>"
+  !endif
+
+  !return $prefix + '<b>""' + $name + '""</b>' + ': ' + '//""' + $type + '"" //'
+!endfunction
+
+!function table($name)
+  !return 'entity "**' + $name + '**"' + " as " + $name
+!endfunction
+
+!procedure enum($name, $variants)
+  !$list = %splitstr($variants, ",")
+
+  object "**$name** <color:purple>**(E)**</color>" as $name {
+    !foreach $item in $list
+      $item
+    !endfor
+  }
+!endprocedure
+
+!procedure add_legend()
+  legend right
+   <#GhostWhite,#GhostWhite>|   |= __Legend__ |
+   |<b><color:#b8861b><&key></color></b>| Primary Key |
+   |<color:#aaaaaa><&key></color>| Foreign Key |
+   | &#8226; | Mandatory field (Not Null) |
+   | <color:purple>**(E)**</color> | Enum |
+  endlegend
+!endprocedure
+"#;
