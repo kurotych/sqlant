@@ -16,6 +16,12 @@ async fn main() {
         .version(env!("CARGO_PKG_VERSION"))
         .arg(Arg::new("connection_string").required(true))
         .arg(
+            Arg::new("inline-puml-lib")
+                .long("inline-puml-lib")
+                .help("Inline PlantUML lib into diagram code")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             Arg::new("legend")
                 .long("legend")
                 .help("Add legend to diagram (supported only for PlantUML)")
@@ -72,6 +78,7 @@ async fn main() {
                 not_null: args.get_flag("not_null"),
                 draw_enums: args.get_flag("enums"),
                 draw_legend: args.get_flag("legend"),
+                inline_puml_lib: args.get_flag("inline-puml-lib"),
             },
         )
         .unwrap();
