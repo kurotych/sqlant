@@ -1,0 +1,39 @@
+!function column($name, $type, $pk=false, $fk=false, $nn=false)
+  !local $prefix = ""
+
+  !if ($pk == true)
+    !$prefix = "<color:#d99d1c><&key></color>"
+  !elseif($nn == true)
+    !$prefix = "*"
+  !endif
+
+  !if ($fk == true)
+    !$prefix = $prefix + "<color:#aaaaaa><&key></color>"
+  !endif
+
+  !return $prefix + '<b>""' + $name + '""</b>' + ': ' + '//""' + $type + '"" //'
+!endfunction
+
+!function table($name)
+  !return 'entity "**' + $name + '**"' + " as " + $name
+!endfunction
+
+!procedure enum($name, $variants)
+  !$list = %splitstr($variants, ",")
+
+  object "**$name** <color:purple>**(E)**</color>" as $name {
+    !foreach $item in $list
+      $item
+    !endfor
+  }
+!endprocedure
+
+!procedure add_legend()
+  legend right
+   <#GhostWhite,#GhostWhite>|   |= __Legend__ |
+   |<b><color:#b8861b><&key></color></b>| Primary Key |
+   |<color:#aaaaaa><&key></color>| Foreign Key |
+   | &#8226; | Mandatory field (Not Null) |
+   | <color:purple>**(E)**</color> | Enum |
+  endlegend
+!endprocedure
