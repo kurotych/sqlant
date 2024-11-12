@@ -31,7 +31,7 @@ async fn main() {
             Arg::new("not_null")
                 .short('n')
                 .long("nn")
-                .help("Add NOT_NULL(NN) marks")
+                .help("Add NOT_NULL(NN) marks (for PlantUML always true)")
                 .action(ArgAction::SetTrue),
         )
         .arg(
