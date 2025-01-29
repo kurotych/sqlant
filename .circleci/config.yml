@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   run_integration_and_smoke_tests:
     docker:
-      - image: cimg/rust:1.77-node
+      - image: cimg/rust:1.83-node
         environment:
           TEST_DATABASE_URL: postgresql://sql:sql@localhost/sql
       - image: cimg/postgres:14.2
