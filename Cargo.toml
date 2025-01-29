@@ -1,6 +1,6 @@
 [package]
 name = "sqlant"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/kurotych/sqlant"
@@ -20,6 +20,8 @@ strum_macros = "0.26"
 clap = "4.1.4"
 tokio-postgres = "0.7"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+postgres-native-tls = "0.5.0"
+native-tls = {version = "0.2.13", features = ["vendored"] }
 
 [profile.release]
 opt-level = "z"  # Optimize for size.
