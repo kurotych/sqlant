@@ -2,7 +2,6 @@
 
 Generate PlantUML/Mermaid ER diagram textual description from SQL connection string  
 **Inspired by [planter](https://github.com/achiku/planter)**  
-##### **Currently, supports only PostgreSQL NoTls connection**
 
 ## Why created
 I like the [idea of planter](https://github.com/achiku/planter#why-created) and I use it in 
