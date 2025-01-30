@@ -1,6 +1,10 @@
 name: CI Test
 
-on: [push, pull_request]
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   test:
@@ -24,7 +28,13 @@ jobs:
           -e POSTGRES_SSL=on
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Setup | Apt packages
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler clang
+
+      - name: Setup | Rust toolchain
+        uses: dtolnay/rust-toolchain@1.83.0
 
       - name: Generate SSL Certificates
         run: |
@@ -46,6 +56,8 @@ jobs:
             -c ssl_cert_file=/var/lib/postgresql/certs/server.crt \
             -c ssl_key_file=/var/lib/postgresql/certs/server.key
 
+      - name: Build (musl) sqlant
+        run: cargo build --features vendored-tls --release --target x86_64-unknown-linux-musl
       - name: Connect to PostgreSQL with SSL
         run: |
           PGPASSWORD=password psql "sslmode=require host=localhost dbname=mydb user=user"

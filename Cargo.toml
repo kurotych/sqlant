@@ -29,4 +29,5 @@ strip = true
 lto = true
 
 [features]
+default = ["vendored-tls"]
 vendored-tls = ["native-tls/vendored"]
