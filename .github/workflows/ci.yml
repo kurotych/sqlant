@@ -57,7 +57,7 @@ jobs:
             -c ssl_key_file=/var/lib/postgresql/certs/server.key
 
       - name: Build (musl) sqlant
-        run: cargo build --features vendored-tls --release --target x86_64-unknown-linux-musl
-      - name: Connect to PostgreSQL with SSL
-        run: |
-          PGPASSWORD=password psql "sslmode=require host=localhost dbname=mydb user=user"
+        run: cargo build  --release --target x86_64-unknown-linux-musl
+      - name: Connect to PostgreSQL with sslmode=require
+        run: psql postgresql://user:password@localhost/mydb?sslmode=require
+
