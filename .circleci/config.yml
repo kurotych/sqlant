@@ -4,7 +4,8 @@ jobs:
   test_job:
     docker:
       - image: cimg/rust:1.83-node
-      - image: circleci/postgres:13.0
+      # - image: circleci/postgres:13.0
+      - image: cimg/postgres:17.2.0
         environment:
           POSTGRES_USER: sql
           POSTGRES_PASSWORD: sql
