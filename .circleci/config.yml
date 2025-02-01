@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   test_job:
     docker:
-      - image: python:3.8.7
+      - image: cimg/rust:1.83-node
       - image: circleci/postgres:13.0
         environment:
           POSTGRES_PASSWORD: password
