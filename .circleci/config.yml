@@ -6,7 +6,9 @@ jobs:
       - image: cimg/rust:1.83-node
       - image: circleci/postgres:13.0
         environment:
-          POSTGRES_PASSWORD: password
+          POSTGRES_USER: sql
+          POSTGRES_PASSWORD: sql
+          POSTGRES_DB: sql
         entrypoint: bash
         command: >
           -c '
@@ -18,7 +20,7 @@ jobs:
     steps:
       - checkout
       - run: sudo apt update
-      - run: psql postgresql://user:password@localhost/mydb?sslmode=require
+      - run: psql "postgresql://sql:sql@localhost/sql?sslmode=require" -c "SELECT 1;"
     resource_class: small
 
   run_integration_and_smoke_tests:
