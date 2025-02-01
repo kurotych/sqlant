@@ -21,6 +21,7 @@ jobs:
       - checkout
       - run: sudo apt update
       - run: psql "postgresql://sql:sql@localhost/sql?sslmode=require" -c "SELECT 1;"
+      - run: rustup target add x86_64-unknown-linux-musl
       - run: cargo build  --release --target x86_64-unknown-linux-musl
       - run: ./target/x86_64-unknown-linux-musl/release/sqlant postgresql://sql:sql@localhost/sql?sslmode=require
     resource_class: small
