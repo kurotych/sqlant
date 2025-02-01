@@ -4,7 +4,7 @@ jobs:
   test_job:
     docker:
       - image: python:3.8.7
-      - image: circleci/postgres:14.2
+      - image: circleci/postgres:13.0
         environment:
           POSTGRES_PASSWORD: password
         entrypoint: bash
