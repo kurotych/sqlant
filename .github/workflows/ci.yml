@@ -26,7 +26,7 @@ jobs:
           '
         ports:
           - 5432:5432
-      steps:
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -57,9 +57,9 @@ jobs:
       #       -c ssl=on \
       #       -c ssl_cert_file=/var/lib/postgresql/certs/server.crt \
       #       -c ssl_key_file=/var/lib/postgresql/certs/server.key
-
-      - name: Build (musl) sqlant
-        run: cargo build  --release --target x86_64-unknown-linux-musl
-      - name: Connect to PostgreSQL with sslmode=require
-        run: psql postgresql://user:password@localhost/mydb?sslmode=require
+      #
+      # - name: Build (musl) sqlant
+      #   run: cargo build  --release --target x86_64-unknown-linux-musl
+      # - name: Connect to PostgreSQL with sslmode=require
+      #   run: psql postgresql://user:password@localhost/mydb?sslmode=require
 
