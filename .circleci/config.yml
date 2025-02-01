@@ -6,6 +6,14 @@ jobs:
       - image: cimg/rust:1.83-node
         environment:
           TEST_DATABASE_URL: postgresql://sql:sql@localhost/sql
+        entrypoint: bash
+        command: >
+          -c '
+            openssl req -nodes -new -x509 -subj "/CN=localhost" -keyout server.key -out server.crt &&
+            chown postgres server.key &&
+            chmod 600 /server.key &&
+            exec /docker-entrypoint.sh -c ssl=on -c ssl_cert_file=/server.crt -c ssl_key_file=/server.key
+          '
       - image: cimg/postgres:14.2
         environment:
             POSTGRES_USER: sql
