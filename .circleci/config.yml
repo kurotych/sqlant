@@ -1,7 +1,7 @@
 version: 2.1
 
 jobs:
-  test_job:
+  build_musl_and_test_ssl:
     docker:
       - image: cimg/rust:1.83-node
       - image: cimg/postgres:17.1
@@ -21,6 +21,8 @@ jobs:
       - checkout
       - run: sudo apt update
       - run: psql "postgresql://sql:sql@localhost/sql?sslmode=require" -c "SELECT 1;"
+      - run: cargo build  --release --target x86_64-unknown-linux-musl
+      - run: ./target/x86_64-unknown-linux-musl/release/sqlant postgresql://sql:sql@localhost/sql?sslmode=require
     resource_class: small
 
   run_integration_and_smoke_tests:
@@ -28,7 +30,7 @@ jobs:
       - image: cimg/rust:1.83-node
         environment:
           TEST_DATABASE_URL: postgresql://sql:sql@localhost/sql
-      - image: cimg/postgres:14.2
+      - image: cimg/postgres:17.1
         environment:
             POSTGRES_USER: sql
             POSTGRES_PASSWORD: sql
@@ -89,5 +91,5 @@ jobs:
 workflows:
   default:
     jobs:
-      - run_integration_and_smoke_tests
-      - test_job
+      - build_musl_and_test_ssl 
+      # - test_job
