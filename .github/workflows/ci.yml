@@ -1,65 +1,20 @@
-name: CI Test
+name: Build Docker Image
 
 on:
-  pull_request:
-    branches: [main]
   push:
-    branches: [main]
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_USER: sql
-          POSTGRES_PASSWORD: sql
-          POSTGRES_DB: sql
-        entrypoint: bash
-        command: >
-          -c '
-            openssl req -nodes -new -x509 -subj "/CN=localhost" -keyout /tmp/server.key -out /tmp/server.crt &&
-            chown postgres /tmp/server.key &&
-            chmod 600 /tmp/server.key &&
-            exec /docker-entrypoint.sh -c ssl=on -c ssl_cert_file=/tmp/server.crt -c ssl_key_file=/tmp/server.key
-          '
-        ports:
-          - 5432:5432
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup | Apt packages
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
-
-      - name: Setup | Rust toolchain
-        uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          targets: x86_64-unknown-linux-musl
-
-      - name: Generate SSL Certificates
-        run: |
-          mkdir -p certs
-          openssl req -new -x509 -days 365 -nodes -out certs/server.crt -keyout certs/server.key -subj "/CN=localhost"
-          chmod 600 certs/server.key
-
-      # - name: Restart PostgreSQL with SSL
-      #   run: |
-      #     docker stop $(docker ps -q --filter ancestor=postgres) || true
-      #     docker run -d \
-      #       -v ${{ github.workspace }}/certs:/var/lib/postgresql/certs \
-      #       -e POSTGRES_USER=user \
-      #       -e POSTGRES_PASSWORD=password \
-      #       -e POSTGRES_DB=mydb \
-      #       -p 5432:5432 \
-      #       postgres:latest \
-      #       -c ssl=on \
-      #       -c ssl_cert_file=/var/lib/postgresql/certs/server.crt \
-      #       -c ssl_key_file=/var/lib/postgresql/certs/server.key
-      #
-      # - name: Build (musl) sqlant
-      #   run: cargo build  --release --target x86_64-unknown-linux-musl
-      # - name: Connect to PostgreSQL with sslmode=require
-      #   run: psql postgresql://user:password@localhost/mydb?sslmode=require
-
+      - name: Build Docker Image
+        run: docker build  .
