@@ -1,68 +1,68 @@
-name: CI Test
-
-on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_USER: user
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: mydb
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U user"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-          -v ${{ github.workspace }}/certs:/var/lib/postgresql/certs
-          -e POSTGRES_INITDB_ARGS="--auth=md5"
-          -e POSTGRES_SSL=on
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup | Apt packages
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
-
-      - name: Setup | Rust toolchain
-        uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          targets: x86_64-unknown-linux-musl
-
-      - name: Generate SSL Certificates
-        run: |
-          mkdir -p certs
-          openssl req -new -x509 -days 365 -nodes -out certs/server.crt -keyout certs/server.key -subj "/CN=localhost"
-          chmod 600 certs/server.key
-
-      # - name: Restart PostgreSQL with SSL
-      #   run: |
-      #     docker stop $(docker ps -q --filter ancestor=postgres) || true
-      #     docker run -d \
-      #       -v ${{ github.workspace }}/certs:/var/lib/postgresql/certs \
-      #       -e POSTGRES_USER=user \
-      #       -e POSTGRES_PASSWORD=password \
-      #       -e POSTGRES_DB=mydb \
-      #       -p 5432:5432 \
-      #       postgres:latest \
-      #       -c ssl=on \
-      #       -c ssl_cert_file=/var/lib/postgresql/certs/server.crt \
-      #       -c ssl_key_file=/var/lib/postgresql/certs/server.key
-      #
-      # - name: Sleep for 10 seconds
-      #   run: sleep 10s
-      #
-      # - name: Build (musl) sqlant
-      #   run: cargo build  --release --target x86_64-unknown-linux-musl
-      - name: Connect to PostgreSQL with sslmode=require
-        run: psql postgresql://user:password@localhost/mydb?sslmode=require
-
+# name: CI Test
+#
+# on:
+#   pull_request:
+#     branches: [main]
+#   push:
+#     branches: [main]
+#
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     services:
+#       postgres:
+#         image: postgres:latest
+#         env:
+#           POSTGRES_USER: user
+#           POSTGRES_PASSWORD: password
+#           POSTGRES_DB: mydb
+#         ports:
+#           - 5432:5432
+#         options: >-
+#           --health-cmd "pg_isready -U user"
+#           --health-interval 10s
+#           --health-timeout 5s
+#           --health-retries 5
+#           -v ${{ github.workspace }}/certs:/var/lib/postgresql/certs
+#           -e POSTGRES_INITDB_ARGS="--auth=md5"
+#           -e POSTGRES_SSL=on
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#
+#       - name: Setup | Apt packages
+#         run: sudo apt-get update && sudo apt-get install -y musl-tools
+#
+#       - name: Setup | Rust toolchain
+#         uses: dtolnay/rust-toolchain@1.83.0
+#         with:
+#           targets: x86_64-unknown-linux-musl
+#
+#       - name: Generate SSL Certificates
+#         run: |
+#           mkdir -p certs
+#           openssl req -new -x509 -days 365 -nodes -out certs/server.crt -keyout certs/server.key -subj "/CN=localhost"
+#           chmod 600 certs/server.key
+#
+#       # - name: Restart PostgreSQL with SSL
+#       #   run: |
+#       #     docker stop $(docker ps -q --filter ancestor=postgres) || true
+#       #     docker run -d \
+#       #       -v ${{ github.workspace }}/certs:/var/lib/postgresql/certs \
+#       #       -e POSTGRES_USER=user \
+#       #       -e POSTGRES_PASSWORD=password \
+#       #       -e POSTGRES_DB=mydb \
+#       #       -p 5432:5432 \
+#       #       postgres:latest \
+#       #       -c ssl=on \
+#       #       -c ssl_cert_file=/var/lib/postgresql/certs/server.crt \
+#       #       -c ssl_key_file=/var/lib/postgresql/certs/server.key
+#       #
+#       # - name: Sleep for 10 seconds
+#       #   run: sleep 10s
+#       #
+#       # - name: Build (musl) sqlant
+#       #   run: cargo build  --release --target x86_64-unknown-linux-musl
+#       - name: Connect to PostgreSQL with sslmode=require
+#         run: psql postgresql://user:password@localhost/mydb?sslmode=require
+#

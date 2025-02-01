@@ -18,6 +18,7 @@ jobs:
     steps:
       - checkout
       - run: sudo apt update
+    resource_class: small
 
   run_integration_and_smoke_tests:
     docker:
@@ -86,3 +87,4 @@ workflows:
   default:
     jobs:
       - run_integration_and_smoke_tests
+      - test_job
