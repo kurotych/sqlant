@@ -15,6 +15,9 @@ jobs:
             chmod 600 /server.key &&
             exec /docker-entrypoint.sh -c ssl=on -c ssl_cert_file=/server.crt -c ssl_key_file=/server.key
           '
+    steps:
+      - checkout
+      - run: sudo apt update
 
   run_integration_and_smoke_tests:
     docker:
