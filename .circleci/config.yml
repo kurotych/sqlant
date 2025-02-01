@@ -11,12 +11,19 @@ jobs:
           POSTGRES_PASSWORD: sql
           POSTGRES_DB: sql
         entrypoint: bash
+        # command: >
+        #   -c '
+        #     openssl req -nodes -new -x509 -subj "/CN=localhost" -keyout server.key -out server.crt &&
+        #     chown postgres server.key &&
+        #     chmod 600 /server.key &&
+        #     exec /docker-entrypoint.sh -c ssl=on -c ssl_cert_file=/server.crt -c ssl_key_file=/server.key
+        #   '
         command: >
           -c '
-            openssl req -nodes -new -x509 -subj "/CN=localhost" -keyout server.key -out server.crt &&
-            chown postgres server.key &&
-            chmod 600 /server.key &&
-            exec /docker-entrypoint.sh -c ssl=on -c ssl_cert_file=/server.crt -c ssl_key_file=/server.key
+            openssl req -nodes -new -x509 -subj "/CN=localhost" -keyout /tmp/server.key -out /tmp/server.crt &&
+            chown postgres /tmp/server.key &&
+            chmod 600 /tmp/server.key &&
+            exec /docker-entrypoint.sh -c ssl=on -c ssl_cert_file=/tmp/server.crt -c ssl_key_file=/tmp/server.key
           '
     steps:
       - checkout
