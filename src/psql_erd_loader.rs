@@ -110,7 +110,10 @@ impl PostgreSqlERDLoader {
         connection_string: &str,
         schema_name: String,
     ) -> Result<PostgreSqlERDLoader, SqlantError> {
-        let connector = TlsConnector::builder().build().unwrap();
+        let connector = TlsConnector::builder()
+            .danger_accept_invalid_certs(true)
+            .build()
+            .unwrap();
         let connector = MakeTlsConnector::new(connector);
 
         let (client, connection) = tokio_postgres::connect(connection_string, connector).await?;
