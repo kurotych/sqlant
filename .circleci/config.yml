@@ -4,20 +4,12 @@ jobs:
   test_job:
     docker:
       - image: cimg/rust:1.83-node
-      # - image: circleci/postgres:13.0
       - image: cimg/postgres:17.1
         environment:
           POSTGRES_USER: sql
           POSTGRES_PASSWORD: sql
           POSTGRES_DB: sql
         entrypoint: bash
-        # command: >
-        #   -c '
-        #     openssl req -nodes -new -x509 -subj "/CN=localhost" -keyout server.key -out server.crt &&
-        #     chown postgres server.key &&
-        #     chmod 600 /server.key &&
-        #     exec /docker-entrypoint.sh -c ssl=on -c ssl_cert_file=/server.crt -c ssl_key_file=/server.key
-        #   '
         command: >
           -c '
             openssl req -nodes -new -x509 -subj "/CN=localhost" -keyout /tmp/server.key -out /tmp/server.crt &&
