@@ -3,8 +3,8 @@ version: 2.1
 jobs:
   test_job:
     docker:
-      - image: python:3.8.7
-      - image: circleci/postgres:13.0
+      - image: cimg/rust:1.83-node
+      - image: cimg/postgres:14.2
         environment:
           POSTGRES_PASSWORD: password
         entrypoint: bash
@@ -18,6 +18,8 @@ jobs:
     steps:
       - checkout
       - run: sudo apt update
+      - run: psql postgresql://user:password@localhost/mydb?sslmode=require
+
     resource_class: small
 
   run_integration_and_smoke_tests:
