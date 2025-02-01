@@ -1,11 +1,12 @@
 version: 2.1
 
 jobs:
-  run_integration_and_smoke_tests:
+  test_job:
     docker:
-      - image: cimg/rust:1.83-node
+      - image: python:3.8.7
+      - image: circleci/postgres:13.0
         environment:
-          TEST_DATABASE_URL: postgresql://sql:sql@localhost/sql
+          POSTGRES_PASSWORD: password
         entrypoint: bash
         command: >
           -c '
@@ -14,6 +15,12 @@ jobs:
             chmod 600 /server.key &&
             exec /docker-entrypoint.sh -c ssl=on -c ssl_cert_file=/server.crt -c ssl_key_file=/server.key
           '
+
+  run_integration_and_smoke_tests:
+    docker:
+      - image: cimg/rust:1.83-node
+        environment:
+          TEST_DATABASE_URL: postgresql://sql:sql@localhost/sql
       - image: cimg/postgres:14.2
         environment:
             POSTGRES_USER: sql
