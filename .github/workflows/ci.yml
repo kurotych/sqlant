@@ -44,25 +44,25 @@ jobs:
           openssl req -new -x509 -days 365 -nodes -out certs/server.crt -keyout certs/server.key -subj "/CN=localhost"
           chmod 600 certs/server.key
 
-      - name: Restart PostgreSQL with SSL
-        run: |
-          docker stop $(docker ps -q --filter ancestor=postgres) || true
-          docker run -d \
-            -v ${{ github.workspace }}/certs:/var/lib/postgresql/certs \
-            -e POSTGRES_USER=user \
-            -e POSTGRES_PASSWORD=password \
-            -e POSTGRES_DB=mydb \
-            -p 5432:5432 \
-            postgres:latest \
-            -c ssl=on \
-            -c ssl_cert_file=/var/lib/postgresql/certs/server.crt \
-            -c ssl_key_file=/var/lib/postgresql/certs/server.key
-
-      - name: Sleep for 10 seconds
-        run: sleep 10s
-
-      - name: Build (musl) sqlant
-        run: cargo build  --release --target x86_64-unknown-linux-musl
+      # - name: Restart PostgreSQL with SSL
+      #   run: |
+      #     docker stop $(docker ps -q --filter ancestor=postgres) || true
+      #     docker run -d \
+      #       -v ${{ github.workspace }}/certs:/var/lib/postgresql/certs \
+      #       -e POSTGRES_USER=user \
+      #       -e POSTGRES_PASSWORD=password \
+      #       -e POSTGRES_DB=mydb \
+      #       -p 5432:5432 \
+      #       postgres:latest \
+      #       -c ssl=on \
+      #       -c ssl_cert_file=/var/lib/postgresql/certs/server.crt \
+      #       -c ssl_key_file=/var/lib/postgresql/certs/server.key
+      #
+      # - name: Sleep for 10 seconds
+      #   run: sleep 10s
+      #
+      # - name: Build (musl) sqlant
+      #   run: cargo build  --release --target x86_64-unknown-linux-musl
       - name: Connect to PostgreSQL with sslmode=require
         run: psql postgresql://user:password@localhost/mydb?sslmode=require
 
