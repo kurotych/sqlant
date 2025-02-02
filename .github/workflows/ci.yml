@@ -1,0 +1,43 @@
+name: Build and Run Docker Image
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:15-3.3
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: docker build -t sqlant .
+
+      - name: Setup Apt packages
+        run: sudo apt update && sudo apt install -y postgresql-client
+
+      - name: Setup DB schema
+        run: psql -d postgresql://user:password@localhost/db -f ./tests/test_db.sql
+
+      - name: Run Docker Image
+        run: docker run --network host sqlant postgresql://user:password@localhost/db

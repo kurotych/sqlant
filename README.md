@@ -2,7 +2,6 @@
 
 Generate PlantUML/Mermaid ER diagram textual description from SQL connection string  
 **Inspired by [planter](https://github.com/achiku/planter)**  
-##### **Currently, supports only PostgreSQL NoTls connection**
 
 ## Why created
 I like the [idea of planter](https://github.com/achiku/planter#why-created) and I use it in 
@@ -12,7 +11,7 @@ But I want to make it better
 ## Installation 
 ### Compiled Binary (Linux only)
 Download the binary file from [releases](https://github.com/kurotych/sqlant/releases) page
-### Docker (Compressed size around 5MB)
+### Docker (Compressed size around 6MB)
 The Docker image contains the `sqlant` binary and serves as a wrapper for executing it.
 [link](https://hub.docker.com/r/kurotych/sqlant)
 ```bash

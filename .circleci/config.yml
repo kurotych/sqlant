@@ -1,12 +1,38 @@
 version: 2.1
 
 jobs:
+  build_musl_and_test_ssl:
+    docker:
+      - image: cimg/rust:1.83-node
+      - image: cimg/postgres:17.1
+        environment:
+          POSTGRES_USER: sql
+          POSTGRES_PASSWORD: sql
+          POSTGRES_DB: sql
+        entrypoint: bash
+        command: >
+          -c '
+            openssl req -nodes -new -x509 -subj "/CN=localhost" -keyout /tmp/server.key -out /tmp/server.crt &&
+            chown postgres /tmp/server.key &&
+            chmod 600 /tmp/server.key &&
+            exec /docker-entrypoint.sh -c ssl=on -c ssl_cert_file=/tmp/server.crt -c ssl_key_file=/tmp/server.key
+          '
+    steps:
+      - checkout
+      - run: sudo apt update
+      - run: sudo apt-get install -y musl-tools
+      - run: rustup target add x86_64-unknown-linux-musl
+      - run: cargo build  --release --target x86_64-unknown-linux-musl
+      - run: psql -d postgresql://sql:sql@localhost/sql?sslmode=require -f ./tests/test_db.sql
+      - run: ./target/x86_64-unknown-linux-musl/release/sqlant postgresql://sql:sql@localhost/sql?sslmode=require
+    resource_class: small
+
   run_integration_and_smoke_tests:
     docker:
-      - image: cimg/rust:1.77-node
+      - image: cimg/rust:1.83-node
         environment:
           TEST_DATABASE_URL: postgresql://sql:sql@localhost/sql
-      - image: cimg/postgres:14.2
+      - image: cimg/postgres:17.1
         environment:
             POSTGRES_USER: sql
             POSTGRES_PASSWORD: sql
@@ -67,4 +93,5 @@ jobs:
 workflows:
   default:
     jobs:
+      - build_musl_and_test_ssl 
       - run_integration_and_smoke_tests

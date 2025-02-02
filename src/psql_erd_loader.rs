@@ -1,12 +1,15 @@
+use native_tls::TlsConnector;
+use postgres_native_tls::MakeTlsConnector;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
+use tokio_postgres::Client;
 
-use crate::SqlantError;
-
-use super::sql_entities::{
-    ColumnConstraints, ForeignKey, SqlERData, SqlERDataLoader, SqlEnums, Table, TableColumn,
+use crate::{
+    sql_entities::{
+        ColumnConstraints, ForeignKey, SqlERData, SqlERDataLoader, SqlEnums, Table, TableColumn,
+    },
+    SqlantError,
 };
-use tokio_postgres::{Client, NoTls};
 
 static GET_TABLES_LIST_QUERY: &str = r#"
 SELECT trim(both '"' from table_name) as table_name
@@ -106,7 +109,12 @@ impl PostgreSqlERDLoader {
         connection_string: &str,
         schema_name: String,
     ) -> Result<PostgreSqlERDLoader, SqlantError> {
-        let (client, connection) = tokio_postgres::connect(connection_string, NoTls).await?;
+        let connector = TlsConnector::builder()
+            .danger_accept_invalid_certs(true)
+            .build()?;
+        let connector = MakeTlsConnector::new(connector);
+
+        let (client, connection) = tokio_postgres::connect(connection_string, connector).await?;
         // The connection object performs the actual communication with the database,
         // so spawn it off to run on its own.
         tokio::spawn(async move {
