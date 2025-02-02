@@ -94,4 +94,4 @@ workflows:
   default:
     jobs:
       - build_musl_and_test_ssl 
-      # - test_job
+      - run_integration_and_smoke_tests

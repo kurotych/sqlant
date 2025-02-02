@@ -1,4 +1,5 @@
 use native_tls::TlsConnector;
+use postgres_native_tls::MakeTlsConnector;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tokio_postgres::Client;
@@ -103,8 +104,6 @@ pub struct PostgreSqlERDLoader {
     fks: BTreeMap<String, BTreeSet<FkInternal>>, // key - source_table_name
 }
 
-use postgres_native_tls::MakeTlsConnector;
-
 impl PostgreSqlERDLoader {
     pub async fn new(
         connection_string: &str,
@@ -112,8 +111,7 @@ impl PostgreSqlERDLoader {
     ) -> Result<PostgreSqlERDLoader, SqlantError> {
         let connector = TlsConnector::builder()
             .danger_accept_invalid_certs(true)
-            .build()
-            .unwrap();
+            .build()?;
         let connector = MakeTlsConnector::new(connector);
 
         let (client, connection) = tokio_postgres::connect(connection_string, connector).await?;
