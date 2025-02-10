@@ -3,11 +3,6 @@
 Generate PlantUML/Mermaid ER diagram textual description from SQL connection string  
 **Inspired by [planter](https://github.com/achiku/planter)**  
 
-## Why created
-I like the [idea of planter](https://github.com/achiku/planter#why-created) and I use it in 
-internal confluence documentation with PlantUML plugin for my projects.  
-But I want to make it better
-
 ## Installation 
 ### Compiled Binary (Linux only)
 Download the binary file from [releases](https://github.com/kurotych/sqlant/releases) page
@@ -40,3 +35,5 @@ postgresql://sqlant_user:sqlant_pswd@localhost/sqlant_db -o mermaid
 ```
 ### Mermaid
 ![image](https://github.com/kurotych/sqlant/assets/20345096/a7d64db6-2d78-4631-bbfc-58cad5a77adb)
+## Links
+- [Optimizing the Process of ER Diagram Creation with PlantUML](https://kurotych.com/posts/er-diagram-creation/)
