@@ -1,6 +1,6 @@
 services:
     db:
-        image: postgres
+        image: postgres:17.4
         environment:
             POSTGRES_USER: sql
             POSTGRES_PASSWORD: sql
