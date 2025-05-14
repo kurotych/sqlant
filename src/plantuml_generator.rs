@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::sql_entities::{SqlERData, Table, TableColumn};
-use crate::{GeneratorConfigOptions, ViewGenerator};
+use crate::{sql_entities::View, GeneratorConfigOptions, ViewGenerator};
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
@@ -14,10 +14,13 @@ static PUML_TEMPLATE: &str = "@startuml\n\n\
     skinparam linetype ortho\n\n\
     {puml_lib}\n\n\
     {{ for ent in entities}}{ent}\n{{ endfor }}\n\
+    {{ for view in views}}{view}\n{{ endfor }}\n\
     {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
     {{ for e in enums}}{e}\n{{ endfor }}{legend}\n@enduml";
 
 static ENTITY_TEMPLATE: &str = "table({name}) \\{\n{pks}  ---\n{fks}{nns}{others}}\n";
+
+static VIEW_TEMPLATE: &str = "view({name}) \\{\n{pks}  ---\n{fks}{nns}{others}}\n";
 
 static COLUMN_TEMPLATE: &str = "  column({col.name}, \"{col.datatype}\"{{ if is_pk }}, $pk=true{{ endif }}{{ if is_fk }}, $fk=true{{ endif }}{{if is_nn}}, $nn=true{{ endif }})\n";
 
@@ -59,7 +62,9 @@ struct SLegend(String);
 #[derive(Serialize)]
 struct SPuml {
     puml_lib: String,
+    // entities can be renamed to "tables"
     entities: Vec<String>,
+    views: Vec<String>,
     foreign_keys: Vec<String>,
     enums: Vec<String>,
     legend: Option<SLegend>,
@@ -85,6 +90,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
         str_templates.add_template("puml", PUML_TEMPLATE)?;
         str_templates.add_template("column", COLUMN_TEMPLATE)?;
         str_templates.add_template("ent", ENTITY_TEMPLATE)?;
+        str_templates.add_template("view", VIEW_TEMPLATE)?;
         str_templates.add_template("rel", REL_TEMPLATE)?;
         str_templates.add_template("enum", ENUM_TEMPLATE)?;
         str_templates.add_template("legend", PUML_LEGEND)?;
@@ -175,6 +181,40 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
             },
         )?)
     }
+
+    fn view_render(&self, view: &View) -> Result<String, crate::SqlantError> {
+        let columns_render = |columns: Vec<Arc<TableColumn>>| -> Result<String, _> {
+            Ok::<std::string::String, crate::SqlantError>(columns.iter().try_fold(
+                String::new(),
+                |acc, col| {
+                    let r = self.str_templates.render(
+                        "column",
+                        &SColumn {
+                            col: col.as_ref(),
+                            is_fk: false,
+                            is_pk: false,
+                            is_nn: false,
+                            is_nn_and_not_pk: false,
+                        },
+                    );
+                    match r {
+                        Ok(r) => Ok(acc + &r),
+                        Err(e) => Err(e),
+                    }
+                },
+            )?)
+        };
+        Ok(self.str_templates.render(
+            "view",
+            &SEntity {
+                pks: String::default(),
+                fks: String::default(),
+                nns: String::default(),
+                others: columns_render(view.columns.clone())?,
+                name: view.name.clone(),
+            },
+        )?)
+    }
 }
 
 impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
@@ -188,6 +228,12 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
             .iter()
             .map(|tbl| self.entity_render(tbl))
             .collect::<Result<Vec<String>, crate::SqlantError>>()?;
+        let views: Vec<String> = sql_erd
+            .views
+            .iter()
+            .map(|view| self.view_render(view))
+            .collect::<Result<Vec<String>, crate::SqlantError>>()?;
+
         let foreign_keys: Vec<String> = sql_erd
             .foreign_keys
             .iter()
@@ -241,6 +287,7 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
                 foreign_keys,
                 enums,
                 legend,
+                views,
             },
         )?)
     }
@@ -269,6 +316,14 @@ static PUML_LIB_INLINE: &str = r#"
   !return 'entity "**' + $name + '**"' + " as " + $name
 !endfunction
 
+!function view($name, $materialized=false)
+  !if ($materialized == false)
+    !return 'entity "**' + $name + ' **<color:SkyBlue>**(V)**</color>"' + " as " + $name
+  !else
+    !return 'entity "**' + $name + ' **<color:DarkBlue>**(MV)**</color>"' + " as " + $name
+  !endif
+!endfunction
+
 !procedure enum($name, $variants)
   !$list = %splitstr($variants, ",")
 
@@ -286,6 +341,8 @@ static PUML_LIB_INLINE: &str = r#"
    |<color:#aaaaaa><&key></color>| Foreign Key |
    | &#8226; | Mandatory field (Not Null) |
    | <color:purple>**(E)**</color> | Enum |
+   | <color:SkyBlue>**(V)**</color> | View |
+   | <color:DarkBlue>**(MV)**</color> | Materialized View |
   endlegend
 !endprocedure
 "#;
