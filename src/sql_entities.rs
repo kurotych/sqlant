@@ -53,6 +53,13 @@ pub struct Table {
     pub has_composite_pk: bool,
 }
 
+#[derive(Clone, Debug)]
+pub struct View {
+    pub materizlied: bool,
+    pub name: String,
+    pub columns: Vec<Arc<TableColumn>>,
+}
+
 // key - enum_name (type) v = enum values
 pub type SqlEnums = BTreeMap<String, Vec<String>>;
 
@@ -62,6 +69,7 @@ pub struct SqlERData {
     pub tables: Vec<Arc<Table>>,
     pub foreign_keys: Vec<ForeignKey>,
     pub enums: SqlEnums,
+    pub views: Vec<Arc<View>>,
 }
 
 #[async_trait::async_trait]

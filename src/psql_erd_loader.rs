@@ -1,9 +1,16 @@
 use native_tls::TlsConnector;
 use postgres_native_tls::MakeTlsConnector;
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
-use tokio_postgres::Client;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+    sync::Arc,
+};
+use tokio_postgres::{
+    types::{FromSql, Type},
+    Client,
+};
 
+use crate::sql_entities::View;
 use crate::{
     sql_entities::{
         ColumnConstraints, ForeignKey, SqlERData, SqlERDataLoader, SqlEnums, Table, TableColumn,
@@ -12,7 +19,7 @@ use crate::{
 };
 
 static GET_TABLES_LIST_QUERY: &str = r#"
-SELECT trim(both '"' from table_name) as table_name
+SELECT trim(both '"' from table_name) as table_name, table_type
 FROM information_schema.tables
 WHERE table_schema = $1
 ORDER BY table_name;
@@ -188,7 +195,6 @@ impl PostgreSqlERDLoader {
             .query(GET_COLUMNS_BASIC_INFO_QUERY, &[&table_names])
             .await?;
         for row in rows {
-            // I don't know how to get rid this
             let col_num: i16 = row.get("col_num");
             let col_name: &str = row.get("col_name");
             let not_null: bool = row.get("not_null");
@@ -345,6 +351,27 @@ impl PostgreSqlERDLoader {
     }
 }
 
+#[derive(Debug, PartialEq)]
+enum TableType {
+    BaseTable,
+    View,
+}
+
+impl<'a> FromSql<'a> for TableType {
+    fn from_sql(_ty: &Type, raw: &[u8]) -> Result<Self, Box<dyn Error + Sync + Send>> {
+        let s = std::str::from_utf8(raw)?;
+        match s {
+            "BASE TABLE" => Ok(TableType::BaseTable),
+            "VIEW" => Ok(TableType::View),
+            other => Err(format!("Unknown table type: {}", other).into()),
+        }
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        *ty == Type::TEXT || *ty == Type::VARCHAR
+    }
+}
+
 #[async_trait::async_trait]
 impl SqlERDataLoader for PostgreSqlERDLoader {
     async fn load_erd_data(&mut self) -> Result<SqlERData, crate::SqlantError> {
@@ -362,14 +389,51 @@ impl SqlERDataLoader for PostgreSqlERDLoader {
             .client
             .query(GET_TABLES_LIST_QUERY, &[&self.schema_name])
             .await?;
-        let table_names: Vec<String> = res.iter().map(|row| row.get("table_name")).collect();
-        let (tables, enums) = self.load_tables(table_names).await?;
-        let foreign_keys = self.get_fks(&tables)?;
+
+        // Collect table names and types as a vector of tuples
+        let table_names_with_types: Vec<(String, TableType)> = res
+            .iter()
+            .map(|row| (row.get("table_name"), row.get("table_type")))
+            .collect();
+
+        // Extract just the table names for loading
+        let table_names: Vec<String> = table_names_with_types
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect();
+
+        let (tables_and_views, enums) = self.load_tables(table_names).await?;
+        let foreign_keys = self.get_fks(&tables_and_views)?;
+
+        let mut views: Vec<Arc<View>> = vec![];
+        let mut tables: Vec<Arc<Table>> = vec![];
+
+        for entity in tables_and_views.into_iter() {
+            let (_, r#type) = table_names_with_types
+                .iter()
+                .find(|t| t.0 == entity.name)
+                .unwrap();
+            match r#type {
+                TableType::BaseTable => tables.push(entity),
+                TableType::View => {
+                    let Table { name, columns, .. } = Arc::try_unwrap(entity).unwrap();
+                    views.push(
+                        View {
+                            materizlied: false,
+                            name,
+                            columns,
+                        }
+                        .into(),
+                    );
+                }
+            }
+        }
 
         Ok(SqlERData {
             tables,
             foreign_keys,
             enums,
+            views,
         })
     }
 }
