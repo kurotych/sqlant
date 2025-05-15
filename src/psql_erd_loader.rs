@@ -25,6 +25,13 @@ WHERE table_schema = $1
 ORDER BY table_name;
 "#;
 
+static GET_MATERIALIZED_VIEWS: &str = r#"
+SELECT trim(both '"' from matviewname) AS matview_name
+FROM pg_matviews
+WHERE schemaname = $1
+ORDER BY matviewname;
+"#;
+
 /// https://www.postgresql.org/docs/current/catalog-pg-attribute.html
 static GET_COLUMNS_BASIC_INFO_QUERY: &str = r#"
 SELECT attname                                  AS col_name,
@@ -405,7 +412,34 @@ impl SqlERDataLoader for PostgreSqlERDLoader {
         let (tables_and_views, enums) = self.load_tables(table_names).await?;
         let foreign_keys = self.get_fks(&tables_and_views)?;
 
-        let mut views: Vec<Arc<View>> = vec![];
+        let mat_views_name: Vec<String> = self
+            .client
+            .query(GET_MATERIALIZED_VIEWS, &[&self.schema_name])
+            .await?
+            .iter()
+            .map(|row| row.get("matview_name"))
+            .collect();
+        let (mat_views, _) = self.load_tables(mat_views_name).await?;
+
+        // Collect table names and types as a vector of tuples
+        let table_names_with_types: Vec<(String, TableType)> = res
+            .iter()
+            .map(|row| (row.get("table_name"), row.get("table_type")))
+            .collect();
+
+        let mut views: Vec<Arc<View>> = mat_views
+            .into_iter()
+            .map(|v| {
+                let v = Arc::try_unwrap(v).unwrap();
+                View {
+                    materizlied: true,
+                    name: v.name,
+                    columns: v.columns,
+                }
+                .into()
+            })
+            .collect();
+
         let mut tables: Vec<Arc<Table>> = vec![];
 
         for entity in tables_and_views.into_iter() {

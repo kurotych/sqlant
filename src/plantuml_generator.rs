@@ -20,7 +20,8 @@ static PUML_TEMPLATE: &str = "@startuml\n\n\
 
 static ENTITY_TEMPLATE: &str = "table({name}) \\{\n{pks}  ---\n{fks}{nns}{others}}\n";
 
-static VIEW_TEMPLATE: &str = "view({name}) \\{\n{pks}  ---\n{fks}{nns}{others}}\n";
+static VIEW_TEMPLATE: &str =
+    "view({name}{{ if materialized}}, $materialized=true{{ endif }}) \\{\n{columns}}\n";
 
 static COLUMN_TEMPLATE: &str = "  column({col.name}, \"{col.datatype}\"{{ if is_pk }}, $pk=true{{ endif }}{{ if is_fk }}, $fk=true{{ endif }}{{if is_nn}}, $nn=true{{ endif }})\n";
 
@@ -45,6 +46,13 @@ struct SColumn<'a> {
     is_pk: bool,
     is_nn: bool,
     is_nn_and_not_pk: bool,
+}
+
+#[derive(Serialize)]
+struct SView {
+    name: String,
+    columns: String,
+    materialized: bool,
 }
 
 #[derive(Serialize)]
@@ -206,12 +214,10 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
         };
         Ok(self.str_templates.render(
             "view",
-            &SEntity {
-                pks: String::default(),
-                fks: String::default(),
-                nns: String::default(),
-                others: columns_render(view.columns.clone())?,
+            &SView {
+                columns: columns_render(view.columns.clone())?,
                 name: view.name.clone(),
+                materialized: view.materizlied,
             },
         )?)
     }
