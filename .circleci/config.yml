@@ -37,7 +37,7 @@ jobs:
             POSTGRES_USER: sql
             POSTGRES_PASSWORD: sql
             POSTGRES_DB: sql
-      - image: plantuml/plantuml-server:latest
+      - image: plantuml/plantuml-server:tomcat-v1.2025.2
     steps:
       - checkout
       - run: sudo apt update
