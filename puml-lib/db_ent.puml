@@ -18,6 +18,14 @@
   !return 'entity "**' + $name + '**"' + " as " + $name
 !endfunction
 
+!function view($name, $materialized=false)
+  !if ($materialized == false)
+    !return 'entity "**' + $name + ' **<color:SkyBlue>**(V)**</color>"' + " as " + $name
+  !else
+    !return 'entity "**' + $name + ' **<color:DarkBlue>**(MV)**</color>"' + " as " + $name
+  !endif
+!endfunction
+
 !procedure enum($name, $variants)
   !$list = %splitstr($variants, ",")
 
@@ -35,5 +43,7 @@
    |<color:#aaaaaa><&key></color>| Foreign Key |
    | &#8226; | Mandatory field (Not Null) |
    | <color:purple>**(E)**</color> | Enum |
+   | <color:SkyBlue>**(V)**</color> | View |
+   | <color:DarkBlue>**(MV)**</color> | Materialized View |
   endlegend
 !endprocedure
