@@ -432,7 +432,7 @@ impl SqlERDataLoader for PostgreSqlERDLoader {
             .map(|v| {
                 let v = Arc::try_unwrap(v).unwrap();
                 View {
-                    materizlied: true,
+                    materialized: true,
                     name: v.name,
                     columns: v.columns,
                 }
@@ -453,7 +453,7 @@ impl SqlERDataLoader for PostgreSqlERDLoader {
                     let Table { name, columns, .. } = Arc::try_unwrap(entity).unwrap();
                     views.push(
                         View {
-                            materizlied: false,
+                            materialized: false,
                             name,
                             columns,
                         }

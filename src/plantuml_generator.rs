@@ -217,7 +217,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
             &SView {
                 columns: columns_render(view.columns.clone())?,
                 name: view.name.clone(),
-                materialized: view.materizlied,
+                materialized: view.materialized,
             },
         )?)
     }
@@ -298,7 +298,7 @@ impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
         )?)
     }
 }
-static PUML_LIB_INCLUDE: &str = "!include https://raw.githubusercontent.com/kurotych/sqlant/b2e5db9ed8659f281208a687a344b34ff38129cd/puml-lib/db_ent.puml";
+static PUML_LIB_INCLUDE: &str = "!include https://raw.githubusercontent.com/kurotych/sqlant/9b19d6691b55c838b0809ed66707e61533a4c9f2/puml-lib/db_ent.puml";
 
 // https://raw.githubusercontent.com/kurotych/sqlant/0497c6594364e406d77dfdc0999e0b5e596b7d73/puml-lib/db_ent.puml
 static PUML_LIB_INLINE: &str = r#"

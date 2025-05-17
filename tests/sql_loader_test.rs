@@ -1,5 +1,9 @@
 use sqlant::{lookup_parser, sql_entities::ColumnConstraints::*, sql_entities::*};
-use std::{collections::BTreeMap, env};
+use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    env,
+};
 
 mod utils;
 use crate::utils::check_fk;
@@ -25,6 +29,63 @@ async fn enums() {
         ],
     );
     assert_eq!(sql_er_data.enums, expected_hash_map);
+}
+
+#[tokio::test]
+async fn views() {
+    let sql_er_data: SqlERData = load_erd().await;
+    let expected = vec![
+        Arc::new(View {
+            materialized: true,
+            name: "monthly_sales_summary".to_string(),
+            columns: vec![
+                Arc::new(TableColumn {
+                    name: "month".to_string(),
+                    col_num: 1,
+                    datatype: "date".to_string(),
+                    constraints: BTreeSet::new(),
+                }),
+                Arc::new(TableColumn {
+                    name: "total_orders".to_string(),
+                    col_num: 2,
+                    datatype: "bigint".to_string(),
+                    constraints: BTreeSet::new(),
+                }),
+                Arc::new(TableColumn {
+                    name: "total_spent".to_string(),
+                    col_num: 3,
+                    datatype: "numeric".to_string(),
+                    constraints: BTreeSet::new(),
+                }),
+            ],
+        }),
+        Arc::new(View {
+            materialized: false,
+            name: "top_customers".to_string(),
+            columns: vec![
+                Arc::new(TableColumn {
+                    name: "customer_id".to_string(),
+                    col_num: 1,
+                    datatype: "bigint".to_string(),
+                    constraints: BTreeSet::new(),
+                }),
+                Arc::new(TableColumn {
+                    name: "total_orders".to_string(),
+                    col_num: 2,
+                    datatype: "bigint".to_string(),
+                    constraints: BTreeSet::new(),
+                }),
+                Arc::new(TableColumn {
+                    name: "total_spent".to_string(),
+                    col_num: 3,
+                    datatype: "numeric".to_string(),
+                    constraints: BTreeSet::new(),
+                }),
+            ],
+        }),
+    ];
+
+    assert_eq!(sql_er_data.views, expected);
 }
 
 #[tokio::test]

@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::vec::Vec;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct TableColumn {
     pub name: String,
     pub col_num: i16, // Can be used like id of column
@@ -53,9 +53,9 @@ pub struct Table {
     pub has_composite_pk: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct View {
-    pub materizlied: bool,
+    pub materialized: bool,
     pub name: String,
     pub columns: Vec<Arc<TableColumn>>,
 }
