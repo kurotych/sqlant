@@ -88,7 +88,7 @@ jobs:
       - run: ./target/release/sqlant $TEST_DATABASE_URL -s test_schema -o mermaid > input.mmd
       - run: mmdc -i input.mmd -o output.png
 
-    resource_class: small
+    resource_class: medium
 
 workflows:
   default:

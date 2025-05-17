@@ -103,7 +103,7 @@ impl<'a> MermaidGenerator<'a> {
                     let mut res: String = self
                         .str_templates
                         .render("column", &column)?
-                        .trim_end_matches(|c| c == ',')
+                        .trim_end_matches([','])
                         .into();
                     if column.is_nn {
                         res += " \"NN\"";
@@ -136,7 +136,7 @@ impl<'a> MermaidGenerator<'a> {
     }
 }
 
-impl<'a> ViewGenerator for MermaidGenerator<'a> {
+impl ViewGenerator for MermaidGenerator<'_> {
     fn generate(
         &self,
         mut sql_erd: SqlERData,

@@ -92,4 +92,30 @@ create table order_detail_approval (
   , approved_at timestamp with time zone not null
   , PRIMARY KEY(order_detail_id, customer_order_id)
   , FOREIGN KEY(order_detail_id, customer_order_id) REFERENCES order_detail (id, customer_order_id)
-)
+);
+
+CREATE VIEW top_customers AS
+SELECT
+  co.customer_id,
+  COUNT(co.id) AS total_orders,
+  SUM(co.total_price) AS total_spent
+FROM
+  customer_order co
+GROUP BY
+  co.customer_id
+ORDER BY total_spent;
+
+
+CREATE MATERIALIZED VIEW monthly_sales_summary AS
+SELECT
+  DATE_TRUNC('month', ordered_at)::date AS month,
+  COUNT(*) AS total_orders,
+  SUM(total_price) AS total_spent
+FROM
+  customer_order
+GROUP BY
+  DATE_TRUNC('month', ordered_at)::date
+ORDER BY
+  month;
+
+
