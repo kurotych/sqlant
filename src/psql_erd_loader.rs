@@ -86,7 +86,7 @@ WHERE pg_type.oid = $1
 ORDER BY pg_enum;
 "#;
 
-/// https://www.postgresql.org/docs/current/view-pg-indexes.html
+// https://www.postgresql.org/docs/current/view-pg-indexes.html
 // If you'll need to add indexers support
 // static GET_INDEXES_QUERY: &'static str = r#"
 // SELECT
@@ -364,7 +364,7 @@ enum TableType {
     View,
 }
 
-impl<'a> FromSql<'a> for TableType {
+impl FromSql<'_> for TableType {
     fn from_sql(_ty: &Type, raw: &[u8]) -> Result<Self, Box<dyn Error + Sync + Send>> {
         let s = std::str::from_utf8(raw)?;
         match s {

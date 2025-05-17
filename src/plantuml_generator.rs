@@ -223,7 +223,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
     }
 }
 
-impl<'a> ViewGenerator for PlantUmlDefaultGenerator<'a> {
+impl ViewGenerator for PlantUmlDefaultGenerator<'_> {
     fn generate(
         &self,
         sql_erd: SqlERData,
