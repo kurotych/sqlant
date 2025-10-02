@@ -35,5 +35,6 @@ postgresql://sqlant_user:sqlant_pswd@localhost/sqlant_db -o mermaid
 ```
 ### Mermaid
 ![image](https://github.com/kurotych/sqlant/assets/20345096/a7d64db6-2d78-4631-bbfc-58cad5a77adb)
-## Links
+## Articles
 - [Optimizing the Process of ER Diagram Creation with PlantUML](https://kurotych.com/posts/er-diagram-creation/)
+- [Reconstructing Entity Relationships In Database Schemas With Plantuml And LLMs](https://csecurity.kubg.edu.ua/index.php/journal/article/view/847/724)
