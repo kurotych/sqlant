@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build_musl_and_test_ssl:
     docker:
-      - image: cimg/rust:1.83-node
+      - image: cimg/rust:1.90.0
       - image: cimg/postgres:17.1
         environment:
           POSTGRES_USER: sql
@@ -29,7 +29,7 @@ jobs:
 
   run_integration_and_smoke_tests:
     docker:
-      - image: cimg/rust:1.83-node
+      - image: cimg/rust:1.90.0
         environment:
           TEST_DATABASE_URL: postgresql://sql:sql@localhost/sql
       - image: cimg/postgres:17.1

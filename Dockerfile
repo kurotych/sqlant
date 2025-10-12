@@ -1,5 +1,5 @@
 # Builder
-FROM rust:1.83 AS builder
+FROM rust:1.90 AS builder
 COPY . /app
 WORKDIR /app
 RUN apt update && apt install musl-tools -y
