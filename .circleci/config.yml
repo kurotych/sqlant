@@ -69,6 +69,9 @@ jobs:
       - run: ./target/release/sqlant $TEST_DATABASE_URL --legend -e --inline-puml-lib > result.puml
       - run: curl --fail -X POST http://localhost:8080/png --data-binary @result.puml -o test.png
 
+      - run: ./target/release/sqlant $TEST_DATABASE_URL --conceptual > result.puml
+      - run: curl --fail -X POST http://localhost:8080/png --data-binary @result.puml -o test.png
+
         # Mermaid
       - run: npm install -g @mermaid-js/mermaid-cli
       - run: sudo apt install chromium-bsu libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1

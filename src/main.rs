@@ -58,6 +58,13 @@ async fn main() {
                 .action(ArgAction::Set)
                 .default_value("plantuml"),
         )
+        .arg(
+            Arg::new("conceptual")
+                .long("conceptual")
+                .help("Create conceptual ER diagram")
+                .action(ArgAction::SetTrue)
+                .default_value("false"),
+        )
         .get_matches();
 
     let mut s = lookup_parser(
@@ -79,6 +86,7 @@ async fn main() {
                 draw_enums: args.get_flag("enums"),
                 draw_legend: args.get_flag("legend"),
                 inline_puml_lib: args.get_flag("inline-puml-lib"),
+                conceptual_diagram: args.get_flag("conceptual"),
             },
         )
         .unwrap();

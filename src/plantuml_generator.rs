@@ -11,6 +11,7 @@ pub struct PlantUmlDefaultGenerator<'a> {
 
 static PUML_TEMPLATE: &str = "@startuml\n\n\
     hide circle\n\
+    hide empty members\n\
     skinparam linetype ortho\n\n\
     {puml_lib}\n\n\
     {{ for ent in entities}}{ent}\n{{ endfor }}\n\
@@ -18,7 +19,8 @@ static PUML_TEMPLATE: &str = "@startuml\n\n\
     {{ for fk in foreign_keys}}{fk}\n{{ endfor }}\n\
     {{ for e in enums}}{e}\n{{ endfor }}{legend}\n@enduml";
 
-static ENTITY_TEMPLATE: &str = "table({name}) \\{\n{pks}  ---\n{fks}{nns}{others}}\n";
+static ENTITY_TEMPLATE: &str =
+    "table({name}) \\{\n{pks} {{ if pks }} ---\n{{ endif }}{fks}{nns}{others}}\n";
 
 static VIEW_TEMPLATE: &str =
     "view({name}{{ if materialized}}, $materialized=true{{ endif }}) \\{\n{columns}}\n";
@@ -154,7 +156,7 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
             others,
         }
     }
-    fn entity_render(&self, tbl: &Table) -> Result<String, crate::SqlantError> {
+    fn entity_render(&self, tbl: &Table, conceptual: bool) -> Result<String, crate::SqlantError> {
         let sorted_columns = Self::sort_columns(&tbl.columns);
 
         let columns_render = |columns: Vec<Arc<TableColumn>>| -> Result<String, _> {
@@ -178,19 +180,28 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
                 },
             )?)
         };
+
+        let columns_render_if_not_conceptual =
+            |columns: Vec<Arc<TableColumn>>| -> Result<String, _> {
+                if !conceptual {
+                    return columns_render(columns);
+                }
+                Ok(String::default())
+            };
+
         Ok(self.str_templates.render(
             "ent",
             &SEntity {
-                pks: columns_render(sorted_columns.pks)?,
-                fks: columns_render(sorted_columns.fks)?,
-                nns: columns_render(sorted_columns.nns)?,
-                others: columns_render(sorted_columns.others)?,
+                pks: columns_render_if_not_conceptual(sorted_columns.pks)?,
+                fks: columns_render_if_not_conceptual(sorted_columns.fks)?,
+                nns: columns_render_if_not_conceptual(sorted_columns.nns)?,
+                others: columns_render_if_not_conceptual(sorted_columns.others)?,
                 name: tbl.name.clone(),
             },
         )?)
     }
 
-    fn view_render(&self, view: &View) -> Result<String, crate::SqlantError> {
+    fn view_render(&self, view: &View, conceptual: bool) -> Result<String, crate::SqlantError> {
         let columns_render = |columns: Vec<Arc<TableColumn>>| -> Result<String, _> {
             Ok::<std::string::String, crate::SqlantError>(columns.iter().try_fold(
                 String::new(),
@@ -212,10 +223,18 @@ impl<'a> PlantUmlDefaultGenerator<'a> {
                 },
             )?)
         };
+        let columns_render_if_not_conceptual =
+            |columns: Vec<Arc<TableColumn>>| -> Result<String, _> {
+                if !conceptual {
+                    return columns_render(columns);
+                }
+                Ok(String::default())
+            };
+
         Ok(self.str_templates.render(
             "view",
             &SView {
-                columns: columns_render(view.columns.clone())?,
+                columns: columns_render_if_not_conceptual(view.columns.clone())?,
                 name: view.name.clone(),
                 materialized: view.materialized,
             },
@@ -232,12 +251,12 @@ impl ViewGenerator for PlantUmlDefaultGenerator<'_> {
         let entities: Vec<String> = sql_erd
             .tables
             .iter()
-            .map(|tbl| self.entity_render(tbl))
+            .map(|tbl| self.entity_render(tbl, opts.conceptual_diagram))
             .collect::<Result<Vec<String>, crate::SqlantError>>()?;
         let views: Vec<String> = sql_erd
             .views
             .iter()
-            .map(|view| self.view_render(view))
+            .map(|view| self.view_render(view, opts.conceptual_diagram))
             .collect::<Result<Vec<String>, crate::SqlantError>>()?;
 
         let foreign_keys: Vec<String> = sql_erd

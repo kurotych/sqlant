@@ -17,6 +17,7 @@ pub struct GeneratorConfigOptions {
     pub draw_enums: bool,
     pub draw_legend: bool,
     pub inline_puml_lib: bool,
+    pub conceptual_diagram: bool,
 }
 
 pub trait ViewGenerator {
