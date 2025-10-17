@@ -1,5 +1,6 @@
 use strum_macros::{Display, EnumString};
 
+pub mod cli;
 pub mod error;
 pub mod mermaid_generator;
 pub mod plantuml_generator;
