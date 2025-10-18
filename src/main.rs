@@ -3,13 +3,15 @@ use std::str::FromStr;
 use clap::ArgMatches;
 use sqlant::{get_generator, lookup_parser, GeneratorConfigOptions, GeneratorType};
 
+mod cli;
+
 fn get_arg(args: &ArgMatches, arg_name: &str) -> String {
     args.get_one::<String>(arg_name).unwrap().to_string()
 }
 
 #[tokio::main]
 async fn main() {
-    let args = sqlant::cli::parse();
+    let args = cli::parse();
 
     let mut s = lookup_parser(
         &get_arg(&args, "connection_string"),
