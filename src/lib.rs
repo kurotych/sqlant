@@ -19,6 +19,7 @@ pub struct GeneratorConfigOptions {
     pub draw_legend: bool,
     pub inline_puml_lib: bool,
     pub conceptual_diagram: bool,
+    pub direction: Option<Direction>,
 }
 
 pub trait ViewGenerator {
@@ -53,4 +54,13 @@ pub fn get_generator(generator_type: GeneratorType) -> Result<Box<dyn ViewGenera
         GeneratorType::PlantUML => Ok(Box::new(PlantUmlDefaultGenerator::new()?)),
         GeneratorType::Mermaid => Ok(Box::new(MermaidGenerator::new()?)),
     }
+}
+
+#[derive(Clone, Debug, Display, EnumString, Eq, PartialEq, PartialOrd, Ord)]
+#[strum(serialize_all = "lowercase")]
+pub enum Direction {
+    TB,
+    BT,
+    LR,
+    RL,
 }

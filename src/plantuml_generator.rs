@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
 use super::sql_entities::{SqlERData, Table, TableColumn};
-use crate::{sql_entities::View, GeneratorConfigOptions, ViewGenerator};
+use crate::{Direction, GeneratorConfigOptions, ViewGenerator, sql_entities::View};
 use serde::Serialize;
-use tinytemplate::{format_unescaped, TinyTemplate};
+use tinytemplate::{TinyTemplate, format_unescaped};
 
 pub struct PlantUmlDefaultGenerator<'a> {
     str_templates: TinyTemplate<'a>,
 }
 
 static PUML_TEMPLATE: &str = "@startuml\n\n\
+{{ if direction }}{ direction }\n{{ endif }}\
     hide circle\n\
     hide empty members\n\
     skinparam linetype ortho\n\n\
@@ -27,8 +28,7 @@ static VIEW_TEMPLATE: &str =
 
 static COLUMN_TEMPLATE: &str = "  column({col.name}, \"{col.datatype}\"{{ if is_pk }}, $pk=true{{ endif }}{{ if is_fk }}, $fk=true{{ endif }}{{if is_nn}}, $nn=true{{ endif }})\n";
 
-static REL_TEMPLATE: &str =
-    "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}\n";
+static REL_TEMPLATE: &str = "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}\n";
 
 static ENUM_TEMPLATE: &str =
     "enum({name}, \"{{ for v in values}}{{if @last}}{v}{{else}}{v}, {{ endif }}{{ endfor }}\")\n";
@@ -70,6 +70,25 @@ struct SEntity {
 struct SLegend(String);
 
 #[derive(Serialize)]
+struct SDirection(String);
+
+impl TryFrom<&Direction> for SDirection {
+    type Error = crate::SqlantError;
+    fn try_from(value: &Direction) -> Result<Self, crate::SqlantError> {
+        match value {
+            Direction::TB => Ok(Self("top to bottom direction".into())),
+            Direction::BT => Err(crate::SqlantError::Generator(
+                "bt (bottom-to-top) direction is not available in plantuml.".into(),
+            )),
+            Direction::LR => Ok(Self("left to right direction".into())),
+            Direction::RL => Err(crate::SqlantError::Generator(
+                "rl (right-to-left) direction is not available in plantuml.".into(),
+            )),
+        }
+    }
+}
+
+#[derive(Serialize)]
 struct SPuml {
     puml_lib: String,
     // entities can be renamed to "tables"
@@ -78,6 +97,7 @@ struct SPuml {
     foreign_keys: Vec<String>,
     enums: Vec<String>,
     legend: Option<SLegend>,
+    direction: Option<SDirection>,
 }
 
 #[derive(Serialize)]
@@ -304,6 +324,12 @@ impl ViewGenerator for PlantUmlDefaultGenerator<'_> {
             PUML_LIB_INCLUDE.into()
         };
 
+        let direction = if let Some(direction) = &opts.direction {
+            Some(SDirection::try_from(direction)?)
+        } else {
+            None
+        };
+
         Ok(self.str_templates.render(
             "puml",
             &SPuml {
@@ -313,6 +339,7 @@ impl ViewGenerator for PlantUmlDefaultGenerator<'_> {
                 enums,
                 legend,
                 views,
+                direction,
             },
         )?)
     }

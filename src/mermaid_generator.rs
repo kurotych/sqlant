@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
 use super::sql_entities::{SqlERData, Table, TableColumn};
-use crate::{GeneratorConfigOptions, ViewGenerator};
+use crate::{Direction, GeneratorConfigOptions, ViewGenerator};
 use serde::Serialize;
-use tinytemplate::{format_unescaped, TinyTemplate};
+use tinytemplate::{TinyTemplate, format_unescaped};
 
 static MERMAID_TEMPLATE: &str = r#"erDiagram
+{{ if direction }}direction {direction}{{ endif }}
 {{ for ent in entities}}{ent}{{ endfor }}
 {{ for en in enums}}{en}{{ endfor }}
 {{ for fk in foreign_keys}}{fk}{{ endfor }}
@@ -13,11 +14,9 @@ static MERMAID_TEMPLATE: &str = r#"erDiagram
 
 static ENTITY_TEMPLATE: &str = "{name} \\{\n{pks}{fks}{others}}\n";
 
-static COLUMN_TEMPLATE: &str =
-    "    {col.datatype} {col.name}{{ if is_pk_or_fk }} {{ endif }}{{ if is_pk }}PK,{{ endif }}{{ if is_fk }}FK{{ endif }}";
+static COLUMN_TEMPLATE: &str = "    {col.datatype} {col.name}{{ if is_pk_or_fk }} {{ endif }}{{ if is_pk }}PK,{{ endif }}{{ if is_fk }}FK{{ endif }}";
 
-static REL_TEMPLATE: &str =
-    "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}: \"\"\n";
+static REL_TEMPLATE: &str = "{source_table_name} {{ if is_zero_one_to_one }}|o--||{{else}}}o--||{{ endif }} {target_table_name}: \"\"\n";
 
 const ENUM_TEMPLATE: &str = "\"{name} (ENUM)\" \\{\n{{ for v in values}}    {v} _\n{{ endfor }}}";
 
@@ -39,7 +38,27 @@ struct SColumn<'a> {
 }
 
 #[derive(Serialize)]
+enum SDirection {
+    TB,
+    BT,
+    LR,
+    RL,
+}
+
+impl From<&Direction> for SDirection {
+    fn from(value: &Direction) -> Self {
+        match value {
+            Direction::TB => Self::TB,
+            Direction::BT => Self::BT,
+            Direction::LR => Self::LR,
+            Direction::RL => Self::RL,
+        }
+    }
+}
+
+#[derive(Serialize)]
 struct SMermaid {
+    direction: Option<SDirection>,
     entities: Vec<String>,
     enums: Vec<String>,
     foreign_keys: Vec<String>,
@@ -184,6 +203,7 @@ impl ViewGenerator for MermaidGenerator<'_> {
         Ok(self.str_templates.render(
             "mermaid",
             &SMermaid {
+                direction: opts.direction.as_ref().map(Into::into),
                 entities,
                 enums,
                 foreign_keys,
