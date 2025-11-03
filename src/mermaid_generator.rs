@@ -3,10 +3,10 @@ use std::sync::Arc;
 use super::sql_entities::{SqlERData, Table, TableColumn};
 use crate::{Direction, GeneratorConfigOptions, ViewGenerator};
 use serde::Serialize;
-use tinytemplate::{TinyTemplate, format_unescaped};
+use tinytemplate::{format_unescaped, TinyTemplate};
 
-static MERMAID_TEMPLATE: &str = r#"erDiagram
-{{ if direction }}direction {direction}{{ endif }}
+static MERMAID_TEMPLATE: &str = r#"erDiagram{{ if direction }}
+direction {direction}{{ endif }}
 {{ for ent in entities}}{ent}{{ endfor }}
 {{ for en in enums}}{en}{{ endfor }}
 {{ for fk in foreign_keys}}{fk}{{ endfor }}
