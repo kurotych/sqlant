@@ -57,5 +57,12 @@ pub fn parse() -> ArgMatches {
                 .action(ArgAction::SetTrue)
                 .default_value("false"),
         )
+        .arg(
+            Arg::new("direction")
+                .long("direction")
+                .value_parser(["tb", "bt", "lr", "rl"])
+                .help("Optionally set the direction of the generated diagram")
+                .action(ArgAction::Set),
+        )
         .get_matches()
 }
