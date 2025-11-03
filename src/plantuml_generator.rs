@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use super::sql_entities::{SqlERData, Table, TableColumn};
-use crate::{Direction, GeneratorConfigOptions, ViewGenerator, sql_entities::View};
+use crate::{sql_entities::View, Direction, GeneratorConfigOptions, ViewGenerator};
 use serde::Serialize;
-use tinytemplate::{TinyTemplate, format_unescaped};
+use tinytemplate::{format_unescaped, TinyTemplate};
 
 pub struct PlantUmlDefaultGenerator<'a> {
     str_templates: TinyTemplate<'a>,
