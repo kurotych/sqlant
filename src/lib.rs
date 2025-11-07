@@ -30,7 +30,7 @@ pub trait ViewGenerator {
     ) -> Result<String, SqlantError>;
 }
 
-pub async fn lookup_parser(
+pub async fn lookup_loader(
     connection_string: &str,
     schema_name: String,
 ) -> Result<Box<dyn SqlERDataLoader>, SqlantError> {

@@ -1,4 +1,4 @@
-use sqlant::{lookup_parser, sql_entities::ColumnConstraints::*, sql_entities::*};
+use sqlant::{lookup_loader, sql_entities::ColumnConstraints::*, sql_entities::*};
 use std::sync::Arc;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -10,7 +10,7 @@ use crate::utils::check_fk;
 
 async fn load_erd() -> SqlERData {
     let con_string = env::var("CON_STRING").unwrap();
-    let mut parser = lookup_parser(&con_string, "public".to_string())
+    let mut parser = lookup_loader(&con_string, "public".to_string())
         .await
         .unwrap();
     parser.load_erd_data().await.unwrap()
