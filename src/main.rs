@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use clap::ArgMatches;
-use sqlant::{get_generator, lookup_parser, Direction, GeneratorConfigOptions, GeneratorType};
+use sqlant::{get_generator, lookup_loader, Direction, GeneratorConfigOptions, GeneratorType};
 
 fn get_arg(args: &ArgMatches, arg_name: &str) -> String {
     args.get_one::<String>(arg_name).unwrap().to_string()
@@ -11,7 +11,7 @@ fn get_arg(args: &ArgMatches, arg_name: &str) -> String {
 async fn main() {
     let args = sqlant::cli::parse();
 
-    let mut s = lookup_parser(
+    let mut s = lookup_loader(
         &get_arg(&args, "connection_string"),
         get_arg(&args, "schema"),
     )
