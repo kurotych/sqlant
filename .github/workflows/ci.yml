@@ -76,7 +76,7 @@ jobs:
 
           # Create a simple lib.rs that uses sqlant
           cat > src/lib.rs << 'EOF'
-          use sqlant::{GeneratorType, get_generator};
+          use sqlant::GeneratorType;
 
           pub fn test_use_sqlant() {
               let _ = GeneratorType::PlantUML;
