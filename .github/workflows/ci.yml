@@ -41,3 +41,60 @@ jobs:
 
       - name: Run Docker Image
         run: docker run --network host sqlant postgresql://user:password@localhost/db
+
+  test-library-no-clap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Create test project using sqlant as library
+        run: |
+          # Create a temporary test project
+          mkdir -p /tmp/test-sqlant-lib
+          cd /tmp/test-sqlant-lib
+
+          # Initialize a new Rust project
+          cargo init --lib
+
+          # Add sqlant as a library dependency (using local path)
+          cat > Cargo.toml << 'EOF'
+          [package]
+          name = "test-sqlant-lib"
+          version = "0.1.0"
+          edition = "2021"
+
+          [dependencies]
+          sqlant = { path = "${{ github.workspace }}", default-features = false }
+          EOF
+
+          # Create a simple lib.rs that uses sqlant
+          cat > src/lib.rs << 'EOF'
+          use sqlant::GeneratorType;
+
+          pub fn test_use_sqlant() {
+              let _ = GeneratorType::PlantUML;
+          }
+          EOF
+
+      - name: Build test project
+        run: |
+          cd /tmp/test-sqlant-lib
+          cargo build
+
+      - name: Verify clap is not in Cargo.lock
+        run: |
+          cd /tmp/test-sqlant-lib
+          if grep -q "name = \"clap\"" Cargo.lock; then
+            echo "ERROR: clap found in Cargo.lock when using sqlant as library"
+            echo "sqlant should not depend on clap when used as a library"
+            exit 1
+          else
+            echo "SUCCESS: clap is not in Cargo.lock"
+          fi

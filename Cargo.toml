@@ -17,7 +17,7 @@ tinytemplate = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 strum = "0.26"
 strum_macros = "0.26"
-clap = "4.1.4"
+clap = { version = "4", optional = true }
 tokio-postgres = "0.7"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 postgres-native-tls = "0.5.0"
@@ -28,6 +28,12 @@ opt-level = "z"  # Optimize for size.
 strip = true
 lto = true
 
+[[bin]]
+name = "sqlant"
+path = "src/main.rs"
+required-features = ["cli"]
+
 [features]
-default = ["vendored-tls"]
+default = ["vendored-tls", "cli"]
 vendored-tls = ["native-tls/vendored"]
+cli = ["dep:clap"]
